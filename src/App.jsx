@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BookHeart, 
   PenLine, 
@@ -12,10 +12,15 @@ import {
   Edit3,
   X,
   RotateCcw,
-  ArchiveX
+  ArchiveX,
+  Bold,
+  Italic,
+  Underline,
+  Palette,
+  Search
 } from 'lucide-react';
 
-// Daftar Kutipan Harian (Anda bisa menambahkannya hingga 30, 100, atau berapapun di sini!)
+// Daftar Kutipan Harian
 const dailyQuotes = [
   {
     text: "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan.",
@@ -40,54 +45,49 @@ const dailyQuotes = [
 ];
 
 const App = () => {
-  // 1. State untuk daftar catatan harian utama
+  // 1. State Daftar Catatan
   const [entries, setEntries] = useState(() => {
     const savedEntries = localStorage.getItem('diary-muslimah-data');
     if (savedEntries) return JSON.parse(savedEntries);
-    return [
-      {
-        id: 1,
-        date: new Date().toISOString(),
-        title: "Hari yang Damai",
-        content: "Alhamdulillah, hari ini berjalan dengan lancar. Aku sempat membaca beberapa halaman Al-Quran setelah Subuh dan rasanya hati menjadi sangat tenang.",
-        mood: "tenang"
-      }
-    ];
+    return [];
   });
 
-  // 2. State untuk catatan yang DIBUANG (Tempat Sampah)
+  // 2. State Tempat Sampah
   const [deletedEntries, setDeletedEntries] = useState(() => {
     const savedDeleted = localStorage.getItem('diary-muslimah-trash');
     if (savedDeleted) return JSON.parse(savedDeleted);
     return [];
   });
 
-  // Efek untuk menyimpan perubahan ke localStorage secara otomatis
-  useEffect(() => {
-    localStorage.setItem('diary-muslimah-data', JSON.stringify(entries));
-  }, [entries]);
+  // 3. State Ukuran Huruf (Tersimpan di memori)
+  const [fontSize, setFontSize] = useState(() => {
+    const savedSize = localStorage.getItem('diary-font-size');
+    return savedSize ? parseInt(savedSize) : 16;
+  });
 
-  useEffect(() => {
-    localStorage.setItem('diary-muslimah-trash', JSON.stringify(deletedEntries));
-  }, [deletedEntries]);
+  // Efek Penyimpanan Otomatis
+  useEffect(() => { localStorage.setItem('diary-muslimah-data', JSON.stringify(entries)); }, [entries]);
+  useEffect(() => { localStorage.setItem('diary-muslimah-trash', JSON.stringify(deletedEntries)); }, [deletedEntries]);
+  useEffect(() => { localStorage.setItem('diary-font-size', fontSize.toString()); }, [fontSize]);
 
-  // States untuk navigasi dan UI
-  const [currentView, setCurrentView] = useState('home'); // 'home', 'write', 'read', 'trash'
+  // States UI & Navigasi
+  const [currentView, setCurrentView] = useState('home');
   const [activeEntry, setActiveEntry] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null); // Menyimpan ID catatan yang sedang diedit
-
-  // States untuk form penulisan
+  const [editingId, setEditingId] = useState(null);
+  
+  // States Form & Pencarian (Tantangan React!)
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newMood, setNewMood] = useState('senang');
+  const [searchTerm, setSearchTerm] = useState(''); // Fitur Live Search
 
-  // Menentukan Kutipan Hari Ini berdasarkan hitungan hari
+  const editorRef = useRef(null); // Referensi untuk area teks editor format
+
+  // Menentukan Kutipan Hari Ini
   const todayDays = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-  const quoteIndex = todayDays % dailyQuotes.length;
-  const currentQuote = dailyQuotes[quoteIndex];
+  const currentQuote = dailyQuotes[todayDays % dailyQuotes.length];
 
-  // Pilihan suasana hati
   const moods = [
     { id: 'senang', emoji: '🥰', label: 'Alhamdulillah' },
     { id: 'tenang', emoji: '😌', label: 'Tenang' },
@@ -101,37 +101,31 @@ const App = () => {
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
-  // FUNGSI: Simpan atau Perbarui Jurnal
+  // --- FUNGSI FORMATTING TEKS ---
+  const applyFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setNewContent(editorRef.current.innerHTML);
+      editorRef.current.focus();
+    }
+  };
+
+  // --- FUNGSI UTAMA ---
   const handleSaveEntry = () => {
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (!newTitle.trim() || !newContent.trim() || newContent === '<br>') return;
 
     if (editingId) {
-      // Jika sedang mode EDIT
       setEntries(entries.map(entry => 
-        entry.id === editingId 
-          ? { ...entry, title: newTitle, content: newContent, mood: newMood }
-          : entry
+        entry.id === editingId ? { ...entry, title: newTitle, content: newContent, mood: newMood } : entry
       ));
       setEditingId(null);
     } else {
-      // Jika membuat BARU
-      const newEntry = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        title: newTitle,
-        content: newContent,
-        mood: newMood
-      };
-      setEntries([newEntry, ...entries]);
+      setEntries([{ id: Date.now(), date: new Date().toISOString(), title: newTitle, content: newContent, mood: newMood }, ...entries]);
     }
-
-    setNewTitle('');
-    setNewContent('');
-    setNewMood('senang');
+    resetForm();
     setCurrentView('home');
   };
 
-  // FUNGSI: Membuka Form untuk Mengedit
   const handleEditEntry = (entry) => {
     setEditingId(entry.id);
     setNewTitle(entry.title);
@@ -140,114 +134,75 @@ const App = () => {
     setCurrentView('write');
   };
 
-  // FUNGSI: Membuang Catatan (Pindah ke Sampah)
+  // Menyiapkan Editor Teks saat masuk mode Tulis/Edit
+  useEffect(() => {
+    if (currentView === 'write' && editorRef.current) {
+      editorRef.current.innerHTML = newContent;
+    }
+  }, [currentView]);
+
   const handleDeleteEntry = (entryToMove) => {
     setEntries(entries.filter(e => e.id !== entryToMove.id));
     setDeletedEntries([entryToMove, ...deletedEntries]);
   };
 
-  // FUNGSI: Mengembalikan Catatan dari Sampah
   const handleRestoreEntry = (entryToRestore) => {
     setDeletedEntries(deletedEntries.filter(e => e.id !== entryToRestore.id));
-    
-    // Kembalikan ke daftar utama, lalu urutkan berdasarkan tanggal terbaru
-    const updatedEntries = [...entries, entryToRestore].sort((a, b) => new Date(b.date) - new Date(a.date));
-    setEntries(updatedEntries);
+    setEntries([...entries, entryToRestore].sort((a, b) => new Date(b.date) - new Date(a.date)));
   };
 
-  // FUNGSI: Menghapus Permanen
-  const handlePermanentDelete = (id) => {
-    setDeletedEntries(deletedEntries.filter(e => e.id !== id));
+  const resetForm = () => {
+    setEditingId(null); setNewTitle(''); setNewContent(''); setNewMood('senang');
   };
 
-  // FUNGSI: Reset form saat membatalkan tulisan
-  const handleCancelWrite = () => {
-    setEditingId(null);
-    setNewTitle('');
-    setNewContent('');
-    setNewMood('senang');
-    setCurrentView('home');
-  };
+  // Logika Filter untuk "Tantangan React" (Live Search Instan)
+  const displayedEntries = entries.filter(entry => 
+    entry.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    entry.content.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] font-sans text-gray-800 relative overflow-x-hidden selection:bg-pink-200 selection:text-pink-900">
       
-      {/* --- Efek Latar Belakang Cat Air (Watercolor Effect) --- */}
+      {/* Efek Latar Belakang Cat Air */}
       <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="fixed top-[20%] right-[-10%] w-[40%] h-[60%] bg-purple-200/30 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="fixed bottom-[-10%] left-[20%] w-[60%] h-[40%] bg-teal-100/40 rounded-full blur-[100px] pointer-events-none"></div>
 
-      {/* --- MENU SLIDE (SIDEBAR) --- */}
-      {/* Latar gelap saat menu terbuka */}
+      {/* MENU SLIDE (SIDEBAR) */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity" onClick={() => setIsSidebarOpen(false)}></div>
       )}
-      
-      {/* Panel Menu Slide */}
       <div className={`fixed top-0 left-0 h-full w-64 bg-white/80 backdrop-blur-xl shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-pink-100 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-serif font-bold text-pink-500 flex items-center gap-2">
-              <BookHeart size={24} /> Menu
-            </h2>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-pink-500 hover:bg-pink-50 rounded-full transition-colors">
-              <X size={20} />
-            </button>
+            <h2 className="text-xl font-serif font-bold text-pink-500 flex items-center gap-2"><BookHeart size={24} /> Menu</h2>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-pink-500 hover:bg-pink-50 rounded-full"><X size={20} /></button>
           </div>
-          
           <div className="space-y-3">
-            <button 
-              onClick={() => { setCurrentView('home'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 p-4 rounded-2xl font-medium transition-all ${currentView === 'home' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}
-            >
+            <button onClick={() => { setCurrentView('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-medium transition-all ${currentView === 'home' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}>
               <CalendarHeart size={20} /> Beranda
             </button>
-            <button 
-              onClick={() => { setCurrentView('trash'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl font-medium transition-all ${currentView === 'trash' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}
-            >
-              <div className="flex items-center gap-3">
-                <Trash2 size={20} /> Sampah
-              </div>
-              {deletedEntries.length > 0 && (
-                <span className="bg-pink-200 text-pink-700 text-xs py-1 px-2 rounded-full font-bold">
-                  {deletedEntries.length}
-                </span>
-              )}
+            <button onClick={() => { setCurrentView('trash'); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between p-4 rounded-2xl font-medium transition-all ${currentView === 'trash' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}>
+              <div className="flex items-center gap-3"><Trash2 size={20} /> Sampah</div>
+              {deletedEntries.length > 0 && <span className="bg-pink-200 text-pink-700 text-xs py-1 px-2 rounded-full font-bold">{deletedEntries.length}</span>}
             </button>
           </div>
         </div>
       </div>
 
-      {/* --- KONTEN UTAMA APLIKASI --- */}
       <div className="max-w-md mx-auto min-h-screen bg-white/40 backdrop-blur-sm shadow-xl shadow-pink-100/50 relative z-10 flex flex-col">
         
         {/* HEADER */}
         <header className="pt-10 pb-6 px-6 text-center relative flex justify-center items-center">
-          {/* Tombol Kiri Header (Back atau Hamburger Menu) */}
           {currentView === 'home' ? (
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"
-            >
-              <Menu size={20} />
-            </button>
+            <button onClick={() => setIsSidebarOpen(true)} className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"><Menu size={20} /></button>
           ) : (
-            <button 
-              onClick={currentView === 'write' ? handleCancelWrite : () => setCurrentView('home')}
-              className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"
-            >
-              <ChevronLeft size={20} />
-            </button>
+            <button onClick={currentView === 'write' ? () => { resetForm(); setCurrentView('home'); } : () => setCurrentView('home')} className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"><ChevronLeft size={20} /></button>
           )}
-
           <div className="flex flex-col items-center">
             <h1 className="text-2xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500 flex items-center gap-2">
-              <BookHeart className="text-pink-400" size={24} />
-              Catatan Muslimah
+              <BookHeart className="text-pink-400" size={24} /> Catatan Muslimah
             </h1>
             <p className="text-[10px] text-gray-500 font-medium tracking-widest uppercase mt-1">
               {currentView === 'trash' ? 'Tempat Sampah' : 'Ruang Cerita & Doa'}
@@ -255,7 +210,6 @@ const App = () => {
           </div>
         </header>
 
-        {/* MAIN CONTENT AREA */}
         <main className="flex-1 px-6 pb-24 overflow-y-auto">
           
           {/* 1. TAMPILAN BERANDA */}
@@ -264,16 +218,24 @@ const App = () => {
               
               <div className="bg-gradient-to-br from-pink-100/80 to-purple-100/80 rounded-3xl p-6 shadow-sm border border-white/50 relative overflow-hidden">
                 <Sparkles className="absolute top-4 right-4 text-pink-300 opacity-50" size={40} />
-                <p className="text-sm font-serif italic text-gray-700 leading-relaxed relative z-10">
-                  "{currentQuote.text}"
-                </p>
-                <p className="text-xs font-semibold text-pink-600 mt-3 relative z-10">
-                  — {currentQuote.source}
-                </p>
+                <p className="text-sm font-serif italic text-gray-700 leading-relaxed relative z-10">"{currentQuote.text}"</p>
+                <p className="text-xs font-semibold text-pink-600 mt-3 relative z-10">— {currentQuote.source}</p>
+              </div>
+
+              {/* TANTANGAN REACT: Live Search Cepat */}
+              <div className="relative mt-2">
+                <Search className="absolute left-4 top-3.5 text-pink-300" size={18} />
+                <input
+                  type="text"
+                  placeholder="Cari memori atau cerita indahmu..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white/60 backdrop-blur-md pl-12 pr-4 py-3 rounded-2xl shadow-sm border border-pink-100 focus:border-pink-300 outline-none transition-all text-sm text-gray-700"
+                />
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 mt-2">
                   <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">
                     <CalendarHeart size={18} className="text-pink-400" />
                     Jurnal Terakhir
@@ -283,48 +245,28 @@ const App = () => {
                 {entries.length === 0 ? (
                   <div className="text-center py-10 text-gray-400 flex flex-col items-center">
                     <Moon size={40} className="mb-3 text-pink-200" />
-                    <p>Belum ada catatan.</p>
-                    <p className="text-sm">Mulai tulis harimu hari ini!</p>
+                    <p>Belum ada catatan.</p><p className="text-sm">Mulai tulis harimu hari ini!</p>
+                  </div>
+                ) : displayedEntries.length === 0 ? (
+                  <div className="text-center py-8 text-pink-300">
+                    <p>Tidak ada cerita yang cocok dengan "{searchTerm}"</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {entries.map((entry) => (
+                    {displayedEntries.map((entry) => (
                       <div key={entry.id} className="w-full bg-white/70 backdrop-blur-md rounded-2xl shadow-sm border border-pink-50 hover:shadow-md transition-all group overflow-hidden">
-                        {/* Area Klik untuk Membaca */}
-                        <div 
-                          className="p-5 cursor-pointer"
-                          onClick={() => { setActiveEntry(entry); setCurrentView('read'); }}
-                        >
+                        <div className="p-5 cursor-pointer" onClick={() => { setActiveEntry(entry); setCurrentView('read'); }}>
                           <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">
-                              {entry.title}
-                            </h3>
-                            <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">
-                              {moods.find(m => m.id === entry.mood)?.emoji}
-                            </span>
+                            <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">{entry.title}</h3>
+                            <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">{moods.find(m => m.id === entry.mood)?.emoji}</span>
                           </div>
-                          <p className="text-xs text-pink-400 font-medium mb-2">
-                            {formatDate(entry.date)}
-                          </p>
-                          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                            {entry.content}
-                          </p>
+                          <p className="text-xs text-pink-400 font-medium mb-2">{formatDate(entry.date)}</p>
+                          {/* Render cuplikan teks tanpa memunculkan kode HTML */}
+                          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                         </div>
-                        
-                        {/* Area Tombol Aksi (Bawah Card) */}
                         <div className="px-5 py-2.5 bg-gradient-to-r from-pink-50/50 to-purple-50/50 flex justify-end gap-4 border-t border-pink-100/50">
-                          <button 
-                            onClick={() => handleEditEntry(entry)} 
-                            className="text-blue-400 flex items-center gap-1.5 text-xs font-bold hover:text-blue-600 transition-colors"
-                          >
-                            <Edit3 size={14} /> Edit
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteEntry(entry)} 
-                            className="text-red-400 flex items-center gap-1.5 text-xs font-bold hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 size={14} /> Hapus
-                          </button>
+                          <button onClick={() => handleEditEntry(entry)} className="text-blue-400 flex items-center gap-1.5 text-xs font-bold hover:text-blue-600 transition-colors"><Edit3 size={14} /> Edit</button>
+                          <button onClick={() => handleDeleteEntry(entry)} className="text-red-400 flex items-center gap-1.5 text-xs font-bold hover:text-red-600 transition-colors"><Trash2 size={14} /> Hapus</button>
                         </div>
                       </div>
                     ))}
@@ -336,27 +278,17 @@ const App = () => {
 
           {/* 2. TAMPILAN TULIS/EDIT JURNAL */}
           {currentView === 'write' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
+            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
               <div className="text-center">
                 <p className="font-serif text-2xl text-pink-300 mb-1">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم</p>
-                <p className="text-xs text-gray-400">
-                  {editingId ? 'Memperbarui cerita...' : 'Awali dengan nama Allah'}
-                </p>
+                <p className="text-xs text-gray-400">{editingId ? 'Memperbarui cerita...' : 'Awali dengan nama Allah'}</p>
               </div>
 
-              <div className="bg-white/60 p-4 rounded-2xl shadow-sm border border-white">
-                <p className="text-xs font-semibold text-gray-500 mb-3 text-center uppercase tracking-wider">Bagaimana perasaanmu hari ini?</p>
+              {/* Mood Selector */}
+              <div className="bg-white/60 p-3 rounded-2xl shadow-sm border border-white">
                 <div className="flex justify-center gap-2 sm:gap-4">
                   {moods.map((mood) => (
-                    <button
-                      key={mood.id}
-                      onClick={() => setNewMood(mood.id)}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                        newMood === mood.id 
-                          ? 'bg-pink-100 scale-110 shadow-sm ring-2 ring-pink-200' 
-                          : 'hover:bg-pink-50 opacity-70 hover:opacity-100'
-                      }`}
-                    >
+                    <button key={mood.id} onClick={() => setNewMood(mood.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${newMood === mood.id ? 'bg-pink-100 scale-110 shadow-sm ring-2 ring-pink-200' : 'hover:bg-pink-50 opacity-70 hover:opacity-100'}`}>
                       <span className="text-2xl">{mood.emoji}</span>
                       <span className="text-[10px] text-gray-600 font-medium">{mood.label}</span>
                     </button>
@@ -364,25 +296,54 @@ const App = () => {
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col gap-4">
+              <div className="flex-1 flex flex-col bg-white/60 p-4 rounded-3xl shadow-inner border border-white/50">
                 <input
                   type="text"
                   placeholder="Beri judul ceritamu..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400 border-b-2 border-pink-100 focus:border-pink-300 outline-none pb-2 transition-colors"
+                  className="w-full bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400 border-b-2 border-pink-100 focus:border-pink-300 outline-none pb-3 mb-4 transition-colors"
                 />
-                <textarea
+                
+                {/* TOOLBAR FORMATTING & ZOOM */}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-pink-50/50 p-2 rounded-xl">
+                  <div className="flex gap-2">
+                    <button onClick={() => applyFormat('bold')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Tebal"><Bold size={16}/></button>
+                    <button onClick={() => applyFormat('italic')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Miring"><Italic size={16}/></button>
+                    <button onClick={() => applyFormat('underline')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Garis Bawah"><Underline size={16}/></button>
+                    
+                    {/* Warna Teks Krayon */}
+                    <div className="relative inline-block overflow-hidden rounded-lg shadow-sm bg-white p-1 hover:bg-pink-50" title="Warna Teks">
+                      <Palette size={20} className="text-gray-600 pointer-events-none mx-1" />
+                      <input 
+                        type="color" 
+                        onChange={(e) => applyFormat('foreColor', e.target.value)}
+                        className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" 
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Zoom Kontrol (A+ / A-) */}
+                  <div className="flex gap-1 border-l-2 border-pink-100 pl-2">
+                    <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className="px-3 py-1 bg-white rounded-lg shadow-sm text-pink-600 font-bold hover:bg-pink-100" title="Perbesar">A+</button>
+                    <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className="px-3 py-1 bg-white rounded-lg shadow-sm text-pink-600 font-bold hover:bg-pink-100" title="Perkecil">A-</button>
+                  </div>
+                </div>
+
+                {/* AREA TEKS RICH EDITOR (Bisa diformat) */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={(e) => setNewContent(e.currentTarget.innerHTML)}
+                  style={{ fontSize: `${fontSize}px` }}
+                  className="w-full flex-1 min-h-[200px] outline-none text-gray-700 leading-relaxed overflow-y-auto"
                   placeholder="Ceritakan apa yang kamu alami atau syukuri hari ini..."
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  className="w-full flex-1 min-h-[250px] bg-white/40 p-5 rounded-2xl shadow-inner border border-white/50 outline-none resize-none text-gray-700 leading-relaxed focus:bg-white/60 transition-colors"
-                ></textarea>
+                ></div>
               </div>
 
               <button
                 onClick={handleSaveEntry}
-                disabled={!newTitle.trim() || !newContent.trim()}
+                disabled={!newTitle.trim()}
                 className="w-full py-4 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
               >
                 {editingId ? 'Simpan Perubahan' : 'Simpan Jurnal'}
@@ -393,26 +354,28 @@ const App = () => {
           {/* 3. TAMPILAN BACA JURNAL */}
           {currentView === 'read' && activeEntry && (
             <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-pink-50 animate-in zoom-in-95 duration-300">
+              {/* Toolbar Zoom Saat Membaca */}
+              <div className="flex justify-end gap-2 mb-4">
+                <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className="px-3 py-1 bg-pink-100 rounded-lg text-pink-700 font-bold hover:bg-pink-200 shadow-sm transition-colors">A+</button>
+                <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className="px-3 py-1 bg-pink-100 rounded-lg text-pink-700 font-bold hover:bg-pink-200 shadow-sm transition-colors">A-</button>
+              </div>
+
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 mb-1">{activeEntry.title}</h2>
-                  <p className="text-sm text-pink-500 font-medium flex items-center gap-2">
-                    <Sun size={14} />
-                    {formatDate(activeEntry.date)}
-                  </p>
+                  <p className="text-sm text-pink-500 font-medium flex items-center gap-2"><Sun size={14} /> {formatDate(activeEntry.date)}</p>
                 </div>
-                <div className="text-4xl bg-pink-50 p-2 rounded-2xl shadow-inner">
-                  {moods.find(m => m.id === activeEntry.mood)?.emoji}
-                </div>
+                <div className="text-4xl bg-pink-50 p-2 rounded-2xl shadow-inner">{moods.find(m => m.id === activeEntry.mood)?.emoji}</div>
               </div>
               
               <div className="w-12 h-1 bg-gradient-to-r from-pink-300 to-transparent mb-6 rounded-full"></div>
               
-              <div className="prose prose-pink max-w-none">
-                <p className="text-gray-700 leading-loose whitespace-pre-wrap">
-                  {activeEntry.content}
-                </p>
-              </div>
+              {/* Render Teks Berformat HTML */}
+              <div 
+                className="text-gray-700 leading-loose whitespace-pre-wrap break-words" 
+                style={{ fontSize: `${fontSize}px` }}
+                dangerouslySetInnerHTML={{ __html: activeEntry.content }}
+              />
             </div>
           )}
 
@@ -421,8 +384,7 @@ const App = () => {
             <div className="space-y-4 animate-in fade-in duration-300">
               {deletedEntries.length === 0 ? (
                 <div className="text-center py-20 text-gray-400 flex flex-col items-center">
-                  <ArchiveX size={40} className="mb-3 text-pink-200" />
-                  <p>Tempat sampah kosong.</p>
+                  <ArchiveX size={40} className="mb-3 text-pink-200" /><p>Tempat sampah kosong.</p>
                 </div>
               ) : (
                 <>
@@ -432,23 +394,11 @@ const App = () => {
                       <div className="p-5 opacity-70">
                         <h3 className="font-bold text-gray-600 line-through decoration-gray-300 mb-1">{entry.title}</h3>
                         <p className="text-xs text-gray-400 mb-2">{formatDate(entry.date)}</p>
-                        <p className="text-sm text-gray-500 line-clamp-1 italic">"{entry.content}"</p>
+                        <p className="text-sm text-gray-500 line-clamp-1 italic" dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                       </div>
-                      
-                      {/* Area Tombol Aksi Sampah */}
                       <div className="px-5 py-2.5 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-                        <button 
-                          onClick={() => handleRestoreEntry(entry)} 
-                          className="text-emerald-500 flex items-center gap-1.5 text-xs font-bold hover:text-emerald-600 transition-colors"
-                        >
-                          <RotateCcw size={14} /> Kembalikan
-                        </button>
-                        <button 
-                          onClick={() => handlePermanentDelete(entry.id)} 
-                          className="text-red-500 flex items-center gap-1.5 text-xs font-bold hover:text-red-700 transition-colors"
-                        >
-                          <ArchiveX size={14} /> Hapus Permanen
-                        </button>
+                        <button onClick={() => handleRestoreEntry(entry)} className="text-emerald-500 flex items-center gap-1.5 text-xs font-bold hover:text-emerald-600 transition-colors"><RotateCcw size={14} /> Kembalikan</button>
+                        <button onClick={() => setDeletedEntries(deletedEntries.filter(e => e.id !== entry.id))} className="text-red-500 flex items-center gap-1.5 text-xs font-bold hover:text-red-700 transition-colors"><ArchiveX size={14} /> Hapus Permanen</button>
                       </div>
                     </div>
                   ))}
@@ -459,17 +409,10 @@ const App = () => {
 
         </main>
 
-        {/* FLOATING ACTION BUTTON (Hanya tampil di beranda) */}
         {currentView === 'home' && (
           <div className="absolute bottom-8 left-0 right-0 flex justify-center">
             <button
-              onClick={() => {
-                setEditingId(null);
-                setNewTitle('');
-                setNewContent('');
-                setNewMood('senang');
-                setCurrentView('write');
-              }}
+              onClick={() => { resetForm(); setCurrentView('write'); }}
               className="group flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-400 text-white px-6 py-4 rounded-full shadow-xl shadow-pink-200 hover:shadow-pink-300 hover:-translate-y-1 transition-all"
             >
               <PenLine size={20} className="group-hover:rotate-12 transition-transform" />
