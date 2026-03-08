@@ -49,7 +49,6 @@ const App = () => {
   const [newMood, setNewMood] = useState('senang');
   const [newEntryLabels, setNewEntryLabels] = useState([]);
   
-  // STATE BARU: Gaya Kertas dan Font
   const [newPaper, setNewPaper] = useState('paper-polos');
   const [newFont, setNewFont] = useState('font-sans');
 
@@ -181,30 +180,44 @@ const App = () => {
   return (
     <div className={`h-[100dvh] w-full ${mode.bgMain} font-sans ${mode.textMain} relative overflow-hidden transition-colors duration-500 selection:${theme.bgMedium} selection:${theme.text}`}>
       
-      {/* SUNTIKAN CSS UNTUK FONT DAN KERTAS */}
+      {/* SUNTIKAN CSS UNTUK FONT DAN KERTAS PRESISI TINGGI */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Dancing+Script:wght@400..700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
         
         /* Font Styles */
         .font-sans { font-family: ui-sans-serif, system-ui, sans-serif; }
         .font-elegant { font-family: 'Lora', serif !important; }
-        .font-handwriting { font-family: 'Caveat', cursive !important; font-size: 1.25em; }
-        .font-script { font-family: 'Dancing Script', cursive !important; font-size: 1.25em; }
+        .font-handwriting { font-family: 'Caveat', cursive !important; font-size: 1.3em; }
+        .font-script { font-family: 'Dancing Script', cursive !important; font-size: 1.3em; }
         
-        /* Paper Styles */
+        /* Paper Styles (Presisi Tinggi Menyesuaikan Baseline) */
         .paper-polos { background-color: transparent; }
+        
         .paper-garis { 
-          background-image: repeating-linear-gradient(transparent, transparent calc(2em - 1px), rgba(150, 150, 150, 0.25) calc(2em - 1px), rgba(150, 150, 150, 0.25) 2em); 
+          /* Kalkulasi 1.6em adalah estimasi titik baseline paling pas untuk line-height 2em */
+          background-image: linear-gradient(transparent calc(1.6em - 1px), rgba(220, 150, 180, 0.4) calc(1.6em - 1px), rgba(220, 150, 180, 0.4) 1.6em, transparent 1.6em);
+          background-size: 100% 2em;
+          /* 1rem adalah penyesuaian padding atas container (p-4 / pt-4) */
+          background-position: 0 1rem;
           line-height: 2em !important; 
           background-attachment: local; 
         }
+        
         .paper-titik { 
-          background-image: radial-gradient(rgba(150, 150, 150, 0.35) 1px, transparent 1px); 
-          background-size: 1.5em 1.5em; 
+          background-image: radial-gradient(rgba(220, 150, 180, 0.6) 1.5px, transparent 1.5px); 
+          background-size: 2em 2em; 
+          background-position: 1rem calc(1rem + 0.6em);
+          line-height: 2em !important; 
+          background-attachment: local; 
         }
+        
         .paper-grid { 
-          background-image: linear-gradient(to right, rgba(150, 150, 150, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(150, 150, 150, 0.2) 1px, transparent 1px); 
-          background-size: 1.5em 1.5em; 
+          background-image: linear-gradient(to right, rgba(220, 150, 180, 0.3) 1px, transparent 1px), 
+                            linear-gradient(to bottom, transparent calc(1.6em - 1px), rgba(220, 150, 180, 0.3) calc(1.6em - 1px), rgba(220, 150, 180, 0.3) 1.6em, transparent 1.6em); 
+          background-size: 2em 2em; 
+          background-position: 1rem 1rem; 
+          line-height: 2em !important; 
+          background-attachment: local; 
         }
       `}</style>
 
