@@ -5,23 +5,21 @@ import {
   CalendarHeart, 
   ChevronLeft, 
   Sparkles,
-  Heart,
   Moon,
-  Sun
+  Sun,
+  Menu,
+  Trash2,
+  Edit3,
+  X,
+  RotateCcw,
+  ArchiveX
 } from 'lucide-react';
 
 const App = () => {
-  // State untuk menyimpan daftar catatan harian (DIUBAH UNTUK LOCALSTORAGE)
+  // 1. State untuk daftar catatan harian utama
   const [entries, setEntries] = useState(() => {
-    // 1. Cek apakah ada data yang tersimpan di "laci" browser
     const savedEntries = localStorage.getItem('diary-muslimah-data');
-    
-    // 2. Jika ada, gunakan data tersebut
-    if (savedEntries) {
-      return JSON.parse(savedEntries);
-    }
-    
-    // 3. Jika belum ada (baru pertama kali buka), gunakan data contoh ini
+    if (savedEntries) return JSON.parse(savedEntries);
     return [
       {
         id: 1,
@@ -33,22 +31,34 @@ const App = () => {
     ];
   });
 
-  // Fitur Ajaib: Setiap kali Anda menambah/mengubah catatan ('entries' berubah), 
-  // otomatis simpan datanya ke dalam "laci" browser!
+  // 2. State untuk catatan yang DIBUANG (Tempat Sampah)
+  const [deletedEntries, setDeletedEntries] = useState(() => {
+    const savedDeleted = localStorage.getItem('diary-muslimah-trash');
+    if (savedDeleted) return JSON.parse(savedDeleted);
+    return [];
+  });
+
+  // Efek untuk menyimpan perubahan ke localStorage secara otomatis
   useEffect(() => {
     localStorage.setItem('diary-muslimah-data', JSON.stringify(entries));
   }, [entries]);
 
-  // State untuk navigasi tampilan ('home', 'write', 'read')
-  const [currentView, setCurrentView] = useState('home');
-  const [activeEntry, setActiveEntry] = useState(null);
+  useEffect(() => {
+    localStorage.setItem('diary-muslimah-trash', JSON.stringify(deletedEntries));
+  }, [deletedEntries]);
 
-  // Form states
+  // States untuk navigasi dan UI
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'write', 'read', 'trash'
+  const [activeEntry, setActiveEntry] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null); // Menyimpan ID catatan yang sedang diedit
+
+  // States untuk form penulisan
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newMood, setNewMood] = useState('senang');
 
-  // Pilihan suasana hati dengan emoji
+  // Pilihan suasana hati
   const moods = [
     { id: 'senang', emoji: '🥰', label: 'Alhamdulillah' },
     { id: 'tenang', emoji: '😌', label: 'Tenang' },
@@ -57,77 +67,172 @@ const App = () => {
     { id: 'lelah', emoji: '🥱', label: 'Lelah' }
   ];
 
-  // Format tanggal ke format bahasa Indonesia
   const formatDate = (dateString) => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
-  // Fungsi untuk menyimpan catatan baru
+  // FUNGSI: Simpan atau Perbarui Jurnal
   const handleSaveEntry = () => {
     if (!newTitle.trim() || !newContent.trim()) return;
 
-    const newEntry = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      title: newTitle,
-      content: newContent,
-      mood: newMood
-    };
+    if (editingId) {
+      // Jika sedang mode EDIT
+      setEntries(entries.map(entry => 
+        entry.id === editingId 
+          ? { ...entry, title: newTitle, content: newContent, mood: newMood }
+          : entry
+      ));
+      setEditingId(null);
+    } else {
+      // Jika membuat BARU
+      const newEntry = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        title: newTitle,
+        content: newContent,
+        mood: newMood
+      };
+      setEntries([newEntry, ...entries]);
+    }
 
-    setEntries([newEntry, ...entries]);
     setNewTitle('');
     setNewContent('');
     setNewMood('senang');
     setCurrentView('home');
   };
 
-  // Fungsi untuk membuka catatan untuk dibaca
-  const handleOpenEntry = (entry) => {
-    setActiveEntry(entry);
-    setCurrentView('read');
+  // FUNGSI: Membuka Form untuk Mengedit
+  const handleEditEntry = (entry) => {
+    setEditingId(entry.id);
+    setNewTitle(entry.title);
+    setNewContent(entry.content);
+    setNewMood(entry.mood);
+    setCurrentView('write');
+  };
+
+  // FUNGSI: Membuang Catatan (Pindah ke Sampah)
+  const handleDeleteEntry = (entryToMove) => {
+    setEntries(entries.filter(e => e.id !== entryToMove.id));
+    setDeletedEntries([entryToMove, ...deletedEntries]);
+  };
+
+  // FUNGSI: Mengembalikan Catatan dari Sampah
+  const handleRestoreEntry = (entryToRestore) => {
+    setDeletedEntries(deletedEntries.filter(e => e.id !== entryToRestore.id));
+    
+    // Kembalikan ke daftar utama, lalu urutkan berdasarkan tanggal terbaru
+    const updatedEntries = [...entries, entryToRestore].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setEntries(updatedEntries);
+  };
+
+  // FUNGSI: Menghapus Permanen
+  const handlePermanentDelete = (id) => {
+    setDeletedEntries(deletedEntries.filter(e => e.id !== id));
+  };
+
+  // FUNGSI: Reset form saat membatalkan tulisan
+  const handleCancelWrite = () => {
+    setEditingId(null);
+    setNewTitle('');
+    setNewContent('');
+    setNewMood('senang');
+    setCurrentView('home');
   };
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] font-sans text-gray-800 relative overflow-x-hidden selection:bg-pink-200 selection:text-pink-900">
       
       {/* --- Efek Latar Belakang Cat Air (Watercolor Effect) --- */}
-      {/* Lingkaran blur ini menciptakan ilusi sapuan cat air yang lembut di latar belakang */}
       <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="fixed top-[20%] right-[-10%] w-[40%] h-[60%] bg-purple-200/30 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="fixed bottom-[-10%] left-[20%] w-[60%] h-[40%] bg-teal-100/40 rounded-full blur-[100px] pointer-events-none"></div>
 
+      {/* --- MENU SLIDE (SIDEBAR) --- */}
+      {/* Latar gelap saat menu terbuka */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+      
+      {/* Panel Menu Slide */}
+      <div className={`fixed top-0 left-0 h-full w-64 bg-white/80 backdrop-blur-xl shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-pink-100 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-xl font-serif font-bold text-pink-500 flex items-center gap-2">
+              <BookHeart size={24} /> Menu
+            </h2>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-pink-500 hover:bg-pink-50 rounded-full transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            <button 
+              onClick={() => { setCurrentView('home'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl font-medium transition-all ${currentView === 'home' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}
+            >
+              <CalendarHeart size={20} /> Beranda
+            </button>
+            <button 
+              onClick={() => { setCurrentView('trash'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between p-4 rounded-2xl font-medium transition-all ${currentView === 'trash' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Trash2 size={20} /> Sampah
+              </div>
+              {deletedEntries.length > 0 && (
+                <span className="bg-pink-200 text-pink-700 text-xs py-1 px-2 rounded-full font-bold">
+                  {deletedEntries.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- KONTEN UTAMA APLIKASI --- */}
       <div className="max-w-md mx-auto min-h-screen bg-white/40 backdrop-blur-sm shadow-xl shadow-pink-100/50 relative z-10 flex flex-col">
         
         {/* HEADER */}
-        <header className="pt-10 pb-6 px-6 text-center relative">
-          {currentView !== 'home' && (
+        <header className="pt-10 pb-6 px-6 text-center relative flex justify-center items-center">
+          {/* Tombol Kiri Header (Back atau Hamburger Menu) */}
+          {currentView === 'home' ? (
             <button 
-              onClick={() => setCurrentView('home')}
-              className="absolute left-6 top-10 p-2 bg-white/60 rounded-full hover:bg-white text-pink-600 transition-colors shadow-sm"
+              onClick={() => setIsSidebarOpen(true)}
+              className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"
+            >
+              <Menu size={20} />
+            </button>
+          ) : (
+            <button 
+              onClick={currentView === 'write' ? handleCancelWrite : () => setCurrentView('home')}
+              className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"
             >
               <ChevronLeft size={20} />
             </button>
           )}
-          <div className="flex justify-center items-center gap-2 mb-2">
-            <BookHeart className="text-pink-400" size={28} />
-            <h1 className="text-2xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
+
+          <div className="flex flex-col items-center">
+            <h1 className="text-2xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500 flex items-center gap-2">
+              <BookHeart className="text-pink-400" size={24} />
               Catatan Muslimah
             </h1>
+            <p className="text-[10px] text-gray-500 font-medium tracking-widest uppercase mt-1">
+              {currentView === 'trash' ? 'Tempat Sampah' : 'Ruang Cerita & Doa'}
+            </p>
           </div>
-          <p className="text-xs text-gray-500 font-medium tracking-widest uppercase">
-            Ruang Cerita & Doa
-          </p>
         </header>
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 px-6 pb-24 overflow-y-auto">
           
-          {/* TAMPILAN BERANDA */}
+          {/* 1. TAMPILAN BERANDA */}
           {currentView === 'home' && (
             <div className="space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
               
-              {/* Daily Quote Card */}
               <div className="bg-gradient-to-br from-pink-100/80 to-purple-100/80 rounded-3xl p-6 shadow-sm border border-white/50 relative overflow-hidden">
                 <Sparkles className="absolute top-4 right-4 text-pink-300 opacity-50" size={40} />
                 <p className="text-sm font-serif italic text-gray-700 leading-relaxed relative z-10">
@@ -138,7 +243,6 @@ const App = () => {
                 </p>
               </div>
 
-              {/* Entries List */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">
@@ -156,26 +260,44 @@ const App = () => {
                 ) : (
                   <div className="space-y-4">
                     {entries.map((entry) => (
-                      <button
-                        key={entry.id}
-                        onClick={() => handleOpenEntry(entry)}
-                        className="w-full text-left bg-white/70 backdrop-blur-md p-5 rounded-2xl shadow-sm border border-pink-50 hover:shadow-md hover:bg-white transition-all group"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">
-                            {entry.title}
-                          </h3>
-                          <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">
-                            {moods.find(m => m.id === entry.mood)?.emoji}
-                          </span>
+                      <div key={entry.id} className="w-full bg-white/70 backdrop-blur-md rounded-2xl shadow-sm border border-pink-50 hover:shadow-md transition-all group overflow-hidden">
+                        {/* Area Klik untuk Membaca */}
+                        <div 
+                          className="p-5 cursor-pointer"
+                          onClick={() => { setActiveEntry(entry); setCurrentView('read'); }}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">
+                              {entry.title}
+                            </h3>
+                            <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">
+                              {moods.find(m => m.id === entry.mood)?.emoji}
+                            </span>
+                          </div>
+                          <p className="text-xs text-pink-400 font-medium mb-2">
+                            {formatDate(entry.date)}
+                          </p>
+                          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                            {entry.content}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-400 mb-2">
-                          {formatDate(entry.date)}
-                        </p>
-                        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                          {entry.content}
-                        </p>
-                      </button>
+                        
+                        {/* Area Tombol Aksi (Bawah Card) */}
+                        <div className="px-5 py-2.5 bg-gradient-to-r from-pink-50/50 to-purple-50/50 flex justify-end gap-4 border-t border-pink-100/50">
+                          <button 
+                            onClick={() => handleEditEntry(entry)} 
+                            className="text-blue-400 flex items-center gap-1.5 text-xs font-bold hover:text-blue-600 transition-colors"
+                          >
+                            <Edit3 size={14} /> Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteEntry(entry)} 
+                            className="text-red-400 flex items-center gap-1.5 text-xs font-bold hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 size={14} /> Hapus
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -183,15 +305,16 @@ const App = () => {
             </div>
           )}
 
-          {/* TAMPILAN TULIS JURNAL */}
+          {/* 2. TAMPILAN TULIS/EDIT JURNAL */}
           {currentView === 'write' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
               <div className="text-center">
                 <p className="font-serif text-2xl text-pink-300 mb-1">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم</p>
-                <p className="text-xs text-gray-400">Awali dengan nama Allah</p>
+                <p className="text-xs text-gray-400">
+                  {editingId ? 'Memperbarui cerita...' : 'Awali dengan nama Allah'}
+                </p>
               </div>
 
-              {/* Mood Selector */}
               <div className="bg-white/60 p-4 rounded-2xl shadow-sm border border-white">
                 <p className="text-xs font-semibold text-gray-500 mb-3 text-center uppercase tracking-wider">Bagaimana perasaanmu hari ini?</p>
                 <div className="flex justify-center gap-2 sm:gap-4">
@@ -212,7 +335,6 @@ const App = () => {
                 </div>
               </div>
 
-              {/* Input Area */}
               <div className="flex-1 flex flex-col gap-4">
                 <input
                   type="text"
@@ -234,12 +356,12 @@ const App = () => {
                 disabled={!newTitle.trim() || !newContent.trim()}
                 className="w-full py-4 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
               >
-                Simpan Jurnal
+                {editingId ? 'Simpan Perubahan' : 'Simpan Jurnal'}
               </button>
             </div>
           )}
 
-          {/* TAMPILAN BACA JURNAL */}
+          {/* 3. TAMPILAN BACA JURNAL */}
           {currentView === 'read' && activeEntry && (
             <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-pink-50 animate-in zoom-in-95 duration-300">
               <div className="flex justify-between items-start mb-6">
@@ -265,13 +387,60 @@ const App = () => {
             </div>
           )}
 
+          {/* 4. TAMPILAN TEMPAT SAMPAH (TRASH) */}
+          {currentView === 'trash' && (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {deletedEntries.length === 0 ? (
+                <div className="text-center py-20 text-gray-400 flex flex-col items-center">
+                  <ArchiveX size={40} className="mb-3 text-pink-200" />
+                  <p>Tempat sampah kosong.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-center text-gray-500 mb-6">Catatan di sini dapat dikembalikan atau dihapus selamanya.</p>
+                  {deletedEntries.map((entry) => (
+                    <div key={entry.id} className="w-full bg-white/50 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                      <div className="p-5 opacity-70">
+                        <h3 className="font-bold text-gray-600 line-through decoration-gray-300 mb-1">{entry.title}</h3>
+                        <p className="text-xs text-gray-400 mb-2">{formatDate(entry.date)}</p>
+                        <p className="text-sm text-gray-500 line-clamp-1 italic">"{entry.content}"</p>
+                      </div>
+                      
+                      {/* Area Tombol Aksi Sampah */}
+                      <div className="px-5 py-2.5 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
+                        <button 
+                          onClick={() => handleRestoreEntry(entry)} 
+                          className="text-emerald-500 flex items-center gap-1.5 text-xs font-bold hover:text-emerald-600 transition-colors"
+                        >
+                          <RotateCcw size={14} /> Kembalikan
+                        </button>
+                        <button 
+                          onClick={() => handlePermanentDelete(entry.id)} 
+                          className="text-red-500 flex items-center gap-1.5 text-xs font-bold hover:text-red-700 transition-colors"
+                        >
+                          <ArchiveX size={14} /> Hapus Permanen
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
         </main>
 
         {/* FLOATING ACTION BUTTON (Hanya tampil di beranda) */}
         {currentView === 'home' && (
           <div className="absolute bottom-8 left-0 right-0 flex justify-center">
             <button
-              onClick={() => setCurrentView('write')}
+              onClick={() => {
+                setEditingId(null);
+                setNewTitle('');
+                setNewContent('');
+                setNewMood('senang');
+                setCurrentView('write');
+              }}
               className="group flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-400 text-white px-6 py-4 rounded-full shadow-xl shadow-pink-200 hover:shadow-pink-300 hover:-translate-y-1 transition-all"
             >
               <PenLine size={20} className="group-hover:rotate-12 transition-transform" />
