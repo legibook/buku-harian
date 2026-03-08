@@ -15,6 +15,30 @@ import {
   ArchiveX
 } from 'lucide-react';
 
+// Daftar Kutipan Harian (Anda bisa menambahkannya hingga 30, 100, atau berapapun di sini!)
+const dailyQuotes = [
+  {
+    text: "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan.",
+    source: "QS. Al-Insyirah: 5-6"
+  },
+  {
+    text: "Janganlah kamu tahzan (bersedih), sesungguhnya Allah bersama kita.",
+    source: "QS. At-Taubah: 40"
+  },
+  {
+    text: "Cukuplah Allah menjadi Penolong kami dan Allah adalah sebaik-baik Pelindung.",
+    source: "QS. Ali 'Imran: 173"
+  },
+  {
+    text: "Berdoalah kepada-Ku, niscaya akan Kuperkenankan bagimu.",
+    source: "QS. Ghafir: 60"
+  },
+  {
+    text: "Dan barangsiapa bertawakal kepada Allah, niscaya Allah akan mencukupkan (keperluan)nya.",
+    source: "QS. At-Talaq: 3"
+  }
+];
+
 const App = () => {
   // 1. State untuk daftar catatan harian utama
   const [entries, setEntries] = useState(() => {
@@ -57,6 +81,11 @@ const App = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newMood, setNewMood] = useState('senang');
+
+  // Menentukan Kutipan Hari Ini berdasarkan hitungan hari
+  const todayDays = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const quoteIndex = todayDays % dailyQuotes.length;
+  const currentQuote = dailyQuotes[quoteIndex];
 
   // Pilihan suasana hati
   const moods = [
@@ -236,10 +265,10 @@ const App = () => {
               <div className="bg-gradient-to-br from-pink-100/80 to-purple-100/80 rounded-3xl p-6 shadow-sm border border-white/50 relative overflow-hidden">
                 <Sparkles className="absolute top-4 right-4 text-pink-300 opacity-50" size={40} />
                 <p className="text-sm font-serif italic text-gray-700 leading-relaxed relative z-10">
-                  "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan."
+                  "{currentQuote.text}"
                 </p>
                 <p className="text-xs font-semibold text-pink-600 mt-3 relative z-10">
-                  — QS. Al-Insyirah: 5-6
+                  — {currentQuote.source}
                 </p>
               </div>
 
