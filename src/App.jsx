@@ -19,7 +19,8 @@ import {
   Palette,
   Search,
   Quote,
-  Plus
+  Plus,
+  GripVertical
 } from 'lucide-react';
 
 // Daftar Kutipan Bawaan (Default)
@@ -96,6 +97,10 @@ const App = () => {
   const [newQuoteText, setNewQuoteText] = useState('');
   const [newQuoteSource, setNewQuoteSource] = useState('');
 
+  // Refs untuk Fitur Drag & Drop Quotes
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+
   const editorRef = useRef(null); 
 
   // Menentukan Kutipan Hari Ini dari daftar Quote Pengguna
@@ -169,6 +174,37 @@ const App = () => {
     const updatedQuotes = [...userQuotes];
     updatedQuotes.splice(index, 1);
     setUserQuotes(updatedQuotes);
+  };
+
+  // --- FUNGSI DRAG & DROP QUOTES ---
+  const handleDragStart = (e, index) => {
+    dragItem.current = index;
+    // Bikin efek transparan saat sedang ditarik
+    e.currentTarget.style.opacity = '0.5';
+  };
+
+  const handleDragEnter = (e, index) => {
+    dragOverItem.current = index;
+  };
+
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    
+    // Pastikan ref ada isinya sebelum diurutkan
+    if (dragItem.current !== null && dragOverItem.current !== null) {
+      const copyQuotes = [...userQuotes];
+      // Simpan item yang ditarik
+      const dragItemContent = copyQuotes[dragItem.current];
+      // Hapus dari posisi lama
+      copyQuotes.splice(dragItem.current, 1);
+      // Sisipkan di posisi baru
+      copyQuotes.splice(dragOverItem.current, 0, dragItemContent);
+      
+      setUserQuotes(copyQuotes);
+    }
+    // Reset referensi
+    dragItem.current = null;
+    dragOverItem.current = null;
   };
 
   const displayedEntries = entries.filter(entry => 
@@ -397,7 +433,7 @@ const App = () => {
             </div>
           )}
 
-          {/* 4. TAMPILAN MANAJEMEN QUOTE */}
+          {/* 4. TAMPILAN MANAJEMEN QUOTE (DENGAN DRAG & DROP) */}
           {currentView === 'quotes' && (
             <div className="space-y-6 animate-in fade-in duration-300">
               
@@ -447,14 +483,29 @@ const App = () => {
                 ) : (
                   <div className="space-y-3">
                     {userQuotes.map((quote, index) => (
-                      <div key={quote.id || index} className="bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-pink-50 flex justify-between items-start gap-4 group">
+                      <div 
+                        key={quote.id || index} 
+                        // Atribut untuk mengaktifkan Drag and Drop
+                        draggable 
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragEnter={(e) => handleDragEnter(e, index)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        className="bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-pink-50 flex justify-between items-start gap-3 group cursor-move hover:shadow-md hover:border-pink-200 transition-all"
+                      >
+                        {/* Ikon Pegangan (Grip) untuk ditarik */}
+                        <div className="pt-1 text-gray-300 group-hover:text-pink-300 transition-colors">
+                          <GripVertical size={18} />
+                        </div>
+                        
                         <div className="flex-1">
                           <p className="text-sm font-serif italic text-gray-700">"{quote.text}"</p>
                           <p className="text-xs font-semibold text-pink-500 mt-2">— {quote.source}</p>
                         </div>
+                        
                         <button 
                           onClick={() => handleDeleteQuote(index)}
-                          className="text-gray-300 hover:text-red-500 transition-colors p-1 bg-white rounded-lg shadow-sm group-hover:opacity-100 opacity-50"
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1 bg-white rounded-lg shadow-sm group-hover:opacity-100 opacity-50 cursor-pointer z-10"
                           title="Hapus Kutipan"
                         >
                           <Trash2 size={16} />
