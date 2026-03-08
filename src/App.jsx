@@ -11,16 +11,33 @@ import {
 } from 'lucide-react';
 
 const App = () => {
-  // State untuk menyimpan daftar catatan harian
-  const [entries, setEntries] = useState([
-    {
-      id: 1,
-      date: new Date().toISOString(),
-      title: "Hari yang Damai",
-      content: "Alhamdulillah, hari ini berjalan dengan lancar. Aku sempat membaca beberapa halaman Al-Quran setelah Subuh dan rasanya hati menjadi sangat tenang.",
-      mood: "tenang"
+  // State untuk menyimpan daftar catatan harian (DIUBAH UNTUK LOCALSTORAGE)
+  const [entries, setEntries] = useState(() => {
+    // 1. Cek apakah ada data yang tersimpan di "laci" browser
+    const savedEntries = localStorage.getItem('diary-muslimah-data');
+    
+    // 2. Jika ada, gunakan data tersebut
+    if (savedEntries) {
+      return JSON.parse(savedEntries);
     }
-  ]);
+    
+    // 3. Jika belum ada (baru pertama kali buka), gunakan data contoh ini
+    return [
+      {
+        id: 1,
+        date: new Date().toISOString(),
+        title: "Hari yang Damai",
+        content: "Alhamdulillah, hari ini berjalan dengan lancar. Aku sempat membaca beberapa halaman Al-Quran setelah Subuh dan rasanya hati menjadi sangat tenang.",
+        mood: "tenang"
+      }
+    ];
+  });
+
+  // Fitur Ajaib: Setiap kali Anda menambah/mengubah catatan ('entries' berubah), 
+  // otomatis simpan datanya ke dalam "laci" browser!
+  useEffect(() => {
+    localStorage.setItem('diary-muslimah-data', JSON.stringify(entries));
+  }, [entries]);
 
   // State untuk navigasi tampilan ('home', 'write', 'read')
   const [currentView, setCurrentView] = useState('home');
