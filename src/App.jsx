@@ -7,6 +7,7 @@ import {
   Sparkles,
   Moon,
   Sun,
+  Sunset,
   Menu,
   Trash2,
   Edit3,
@@ -117,9 +118,24 @@ const App = () => {
     { id: 'lelah', emoji: '🥱', label: 'Lelah' }
   ];
 
-  const formatDate = (dateString) => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('id-ID', options);
+  // --- FUNGSI FORMAT WAKTU & IKON DINAMIS ---
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const datePart = date.toLocaleDateString('id-ID', optionsDate);
+    const timePart = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    // Menghasilkan format: Minggu, 8 Maret 2026 • 20:24
+    return `${datePart} • ${timePart}`; 
+  };
+
+  const getTimeIcon = (dateString, size = 14) => {
+    const hour = new Date(dateString).getHours();
+    // Pagi s/d Siang (05:00 - 14:59) -> Matahari
+    if (hour >= 5 && hour < 15) return <Sun size={size} className="text-amber-500" />;
+    // Sore (15:00 - 17:59) -> Matahari Terbenam
+    if (hour >= 15 && hour < 18) return <Sunset size={size} className="text-orange-400" />;
+    // Malam (18:00 - 04:59) -> Bulan
+    return <Moon size={size} className="text-indigo-400" />;
   };
 
   const applyFormat = (command, value = null) => {
@@ -311,7 +327,10 @@ const App = () => {
                             <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">{entry.title}</h3>
                             <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">{moods.find(m => m.id === entry.mood)?.emoji}</span>
                           </div>
-                          <p className="text-xs text-pink-400 font-medium mb-2">{formatDate(entry.date)}</p>
+                          <div className="flex items-center gap-1.5 text-xs text-pink-400 font-medium mb-2">
+                            {getTimeIcon(entry.date)}
+                            <span>{formatDateTime(entry.date)}</span>
+                          </div>
                           <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                         </div>
                         <div className="px-5 py-2.5 bg-gradient-to-r from-pink-50/50 to-purple-50/50 flex justify-end gap-4 border-t border-pink-100/50">
@@ -407,7 +426,10 @@ const App = () => {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 mb-1">{activeEntry.title}</h2>
-                  <p className="text-sm text-pink-500 font-medium flex items-center gap-2"><Sun size={14} /> {formatDate(activeEntry.date)}</p>
+                  <p className="text-sm text-pink-500 font-medium flex items-center gap-2">
+                    {getTimeIcon(activeEntry.date)}
+                    <span>{formatDateTime(activeEntry.date)}</span>
+                  </p>
                 </div>
                 <div className="text-4xl bg-pink-50 p-2 rounded-2xl shadow-inner">{moods.find(m => m.id === activeEntry.mood)?.emoji}</div>
               </div>
@@ -517,7 +539,10 @@ const App = () => {
                     <div key={entry.id} className="w-full bg-white/50 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
                       <div className="p-5 opacity-70">
                         <h3 className="font-bold text-gray-600 line-through decoration-gray-300 mb-1">{entry.title}</h3>
-                        <p className="text-xs text-gray-400 mb-2">{formatDate(entry.date)}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
+                          {getTimeIcon(entry.date)}
+                          <span>{formatDateTime(entry.date)}</span>
+                        </div>
                         <p className="text-sm text-gray-500 line-clamp-1 italic" dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                       </div>
                       <div className="px-5 py-2.5 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
