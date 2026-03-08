@@ -17,11 +17,13 @@ import {
   Italic,
   Underline,
   Palette,
-  Search
+  Search,
+  Quote,
+  Plus
 } from 'lucide-react';
 
-// Daftar Kutipan Harian
-const dailyQuotes = [
+// Daftar Kutipan Bawaan (Default)
+const defaultQuotes = [
   {
     text: "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan.",
     source: "QS. Al-Insyirah: 5-6"
@@ -59,34 +61,48 @@ const App = () => {
     return [];
   });
 
-  // 3. State Ukuran Huruf (Tersimpan di memori)
+  // 3. State Ukuran Huruf
   const [fontSize, setFontSize] = useState(() => {
     const savedSize = localStorage.getItem('diary-font-size');
     return savedSize ? parseInt(savedSize) : 16;
+  });
+
+  // 4. State Daftar Quote Milik Pengguna (Custom Quotes)
+  const [userQuotes, setUserQuotes] = useState(() => {
+    const savedQuotes = localStorage.getItem('diary-muslimah-quotes');
+    if (savedQuotes) return JSON.parse(savedQuotes);
+    return defaultQuotes; // Gunakan bawaan jika belum ada
   });
 
   // Efek Penyimpanan Otomatis
   useEffect(() => { localStorage.setItem('diary-muslimah-data', JSON.stringify(entries)); }, [entries]);
   useEffect(() => { localStorage.setItem('diary-muslimah-trash', JSON.stringify(deletedEntries)); }, [deletedEntries]);
   useEffect(() => { localStorage.setItem('diary-font-size', fontSize.toString()); }, [fontSize]);
+  useEffect(() => { localStorage.setItem('diary-muslimah-quotes', JSON.stringify(userQuotes)); }, [userQuotes]);
 
   // States UI & Navigasi
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState('home'); // home, write, read, trash, quotes
   const [activeEntry, setActiveEntry] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  // States Form & Pencarian (Tantangan React!)
+  // States Form Jurnal & Pencarian
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newMood, setNewMood] = useState('senang');
-  const [searchTerm, setSearchTerm] = useState(''); // Fitur Live Search
+  const [searchTerm, setSearchTerm] = useState(''); 
 
-  const editorRef = useRef(null); // Referensi untuk area teks editor format
+  // States Form Quote Baru
+  const [newQuoteText, setNewQuoteText] = useState('');
+  const [newQuoteSource, setNewQuoteSource] = useState('');
 
-  // Menentukan Kutipan Hari Ini
+  const editorRef = useRef(null); 
+
+  // Menentukan Kutipan Hari Ini dari daftar Quote Pengguna
   const todayDays = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-  const currentQuote = dailyQuotes[todayDays % dailyQuotes.length];
+  // Jika quote kosong, berikan satu quote darurat
+  const safeQuotes = userQuotes.length > 0 ? userQuotes : [{ text: "Tuliskan kutipan inspiratifmu sendiri di menu Atur Quote.", source: "Sistem" }];
+  const currentQuote = safeQuotes[todayDays % safeQuotes.length];
 
   const moods = [
     { id: 'senang', emoji: '🥰', label: 'Alhamdulillah' },
@@ -101,7 +117,6 @@ const App = () => {
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
-  // --- FUNGSI FORMATTING TEKS ---
   const applyFormat = (command, value = null) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
@@ -110,14 +125,10 @@ const App = () => {
     }
   };
 
-  // --- FUNGSI UTAMA ---
   const handleSaveEntry = () => {
     if (!newTitle.trim() || !newContent.trim() || newContent === '<br>') return;
-
     if (editingId) {
-      setEntries(entries.map(entry => 
-        entry.id === editingId ? { ...entry, title: newTitle, content: newContent, mood: newMood } : entry
-      ));
+      setEntries(entries.map(entry => entry.id === editingId ? { ...entry, title: newTitle, content: newContent, mood: newMood } : entry));
       setEditingId(null);
     } else {
       setEntries([{ id: Date.now(), date: new Date().toISOString(), title: newTitle, content: newContent, mood: newMood }, ...entries]);
@@ -127,18 +138,11 @@ const App = () => {
   };
 
   const handleEditEntry = (entry) => {
-    setEditingId(entry.id);
-    setNewTitle(entry.title);
-    setNewContent(entry.content);
-    setNewMood(entry.mood);
-    setCurrentView('write');
+    setEditingId(entry.id); setNewTitle(entry.title); setNewContent(entry.content); setNewMood(entry.mood); setCurrentView('write');
   };
 
-  // Menyiapkan Editor Teks saat masuk mode Tulis/Edit
   useEffect(() => {
-    if (currentView === 'write' && editorRef.current) {
-      editorRef.current.innerHTML = newContent;
-    }
+    if (currentView === 'write' && editorRef.current) { editorRef.current.innerHTML = newContent; }
   }, [currentView]);
 
   const handleDeleteEntry = (entryToMove) => {
@@ -151,11 +155,22 @@ const App = () => {
     setEntries([...entries, entryToRestore].sort((a, b) => new Date(b.date) - new Date(a.date)));
   };
 
-  const resetForm = () => {
-    setEditingId(null); setNewTitle(''); setNewContent(''); setNewMood('senang');
+  const resetForm = () => { setEditingId(null); setNewTitle(''); setNewContent(''); setNewMood('senang'); };
+
+  // FUNGSI QUOTE: Tambah dan Hapus
+  const handleAddQuote = () => {
+    if (!newQuoteText.trim()) return;
+    const newQuote = { text: newQuoteText, source: newQuoteSource.trim() || "Anonim", id: Date.now() };
+    setUserQuotes([newQuote, ...userQuotes]);
+    setNewQuoteText(''); setNewQuoteSource('');
   };
 
-  // Logika Filter untuk "Tantangan React" (Live Search Instan)
+  const handleDeleteQuote = (index) => {
+    const updatedQuotes = [...userQuotes];
+    updatedQuotes.splice(index, 1);
+    setUserQuotes(updatedQuotes);
+  };
+
   const displayedEntries = entries.filter(entry => 
     entry.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     entry.content.toLowerCase().includes(searchTerm.toLowerCase())
@@ -183,6 +198,9 @@ const App = () => {
             <button onClick={() => { setCurrentView('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-medium transition-all ${currentView === 'home' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}>
               <CalendarHeart size={20} /> Beranda
             </button>
+            <button onClick={() => { setCurrentView('quotes'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-medium transition-all ${currentView === 'quotes' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}>
+              <Quote size={20} /> Atur Quote
+            </button>
             <button onClick={() => { setCurrentView('trash'); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between p-4 rounded-2xl font-medium transition-all ${currentView === 'trash' ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50 text-gray-600'}`}>
               <div className="flex items-center gap-3"><Trash2 size={20} /> Sampah</div>
               {deletedEntries.length > 0 && <span className="bg-pink-200 text-pink-700 text-xs py-1 px-2 rounded-full font-bold">{deletedEntries.length}</span>}
@@ -205,7 +223,7 @@ const App = () => {
               <BookHeart className="text-pink-400" size={24} /> Catatan Muslimah
             </h1>
             <p className="text-[10px] text-gray-500 font-medium tracking-widest uppercase mt-1">
-              {currentView === 'trash' ? 'Tempat Sampah' : 'Ruang Cerita & Doa'}
+              {currentView === 'trash' ? 'Tempat Sampah' : currentView === 'quotes' ? 'Koleksi Inspirasi' : 'Ruang Cerita & Doa'}
             </p>
           </div>
         </header>
@@ -379,7 +397,77 @@ const App = () => {
             </div>
           )}
 
-          {/* 4. TAMPILAN TEMPAT SAMPAH (TRASH) */}
+          {/* 4. TAMPILAN MANAJEMEN QUOTE */}
+          {currentView === 'quotes' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              
+              {/* Form Tambah Quote */}
+              <div className="bg-white/60 p-5 rounded-3xl shadow-sm border border-white">
+                <h3 className="font-bold text-pink-600 flex items-center gap-2 mb-4">
+                  <Plus size={18} /> Tambah Kutipan Favoritmu
+                </h3>
+                <div className="space-y-3">
+                  <textarea
+                    placeholder="Tulis kutipan indah, ayat, atau motivasi di sini..."
+                    value={newQuoteText}
+                    onChange={(e) => setNewQuoteText(e.target.value)}
+                    className="w-full bg-white/50 p-3 rounded-xl shadow-inner border border-pink-50 outline-none focus:border-pink-300 text-sm text-gray-700 resize-none h-24"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Sumber (Contoh: QS. Al-Baqarah: 152)"
+                    value={newQuoteSource}
+                    onChange={(e) => setNewQuoteSource(e.target.value)}
+                    className="w-full bg-white/50 p-3 rounded-xl shadow-inner border border-pink-50 outline-none focus:border-pink-300 text-sm text-gray-700"
+                  />
+                  <button
+                    onClick={handleAddQuote}
+                    disabled={!newQuoteText.trim()}
+                    className="w-full py-3 bg-pink-400 hover:bg-pink-500 text-white rounded-xl font-bold shadow-md shadow-pink-200 transition-all disabled:opacity-50"
+                  >
+                    Simpan Kutipan
+                  </button>
+                </div>
+              </div>
+
+              {/* Daftar Quote Saat Ini */}
+              <div>
+                <div className="flex justify-between items-center mb-3 px-1">
+                  <h3 className="font-bold text-gray-700">Daftar Kutipan Aktif ({userQuotes.length})</h3>
+                  <button 
+                    onClick={() => setUserQuotes(defaultQuotes)}
+                    className="text-xs text-pink-500 hover:underline font-medium"
+                  >
+                    Reset ke Bawaan
+                  </button>
+                </div>
+                
+                {userQuotes.length === 0 ? (
+                  <p className="text-center text-gray-400 py-6 text-sm">Belum ada kutipan. Tambahkan di atas!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {userQuotes.map((quote, index) => (
+                      <div key={quote.id || index} className="bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-pink-50 flex justify-between items-start gap-4 group">
+                        <div className="flex-1">
+                          <p className="text-sm font-serif italic text-gray-700">"{quote.text}"</p>
+                          <p className="text-xs font-semibold text-pink-500 mt-2">— {quote.source}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteQuote(index)}
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1 bg-white rounded-lg shadow-sm group-hover:opacity-100 opacity-50"
+                          title="Hapus Kutipan"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 5. TAMPILAN TEMPAT SAMPAH (TRASH) */}
           {currentView === 'trash' && (
             <div className="space-y-4 animate-in fade-in duration-300">
               {deletedEntries.length === 0 ? (
