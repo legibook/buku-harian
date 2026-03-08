@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { BookHeart, PenLine, CalendarHeart, ChevronLeft, Sparkles, Moon, Sun, Sunset, Menu, Trash2, Edit3, X, RotateCcw, ArchiveX, Bold, Italic, Underline, Palette, Search, Quote, Plus, GripVertical, Tag, Settings, Check } from 'lucide-react';
+import { BookHeart, PenLine, CalendarHeart, ChevronLeft, Sparkles, Moon, Sun, Sunset, Menu, Trash2, Edit3, X, RotateCcw, ArchiveX, Bold, Italic, Underline, Palette, Search, Quote, Plus, GripVertical, Tag, Settings, Check, FileText, Type } from 'lucide-react';
 
 const defaultQuotes = [
   { text: "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan.", source: "QS. Al-Insyirah: 5-6" },
@@ -48,6 +48,11 @@ const App = () => {
   const [newContent, setNewContent] = useState('');
   const [newMood, setNewMood] = useState('senang');
   const [newEntryLabels, setNewEntryLabels] = useState([]);
+  
+  // STATE BARU: Gaya Kertas dan Font
+  const [newPaper, setNewPaper] = useState('paper-polos');
+  const [newFont, setNewFont] = useState('font-sans');
+
   const [searchTerm, setSearchTerm] = useState(''); 
   const [selectedLabelFilter, setSelectedLabelFilter] = useState(null); 
 
@@ -107,21 +112,32 @@ const App = () => {
 
   const handleSaveEntry = useCallback(() => {
     if (!newTitle.trim() || !newContent.trim() || newContent === '<br>') return;
-    const entryData = { title: newTitle, content: newContent, mood: newMood, labels: newEntryLabels };
+    const entryData = { title: newTitle, content: newContent, mood: newMood, labels: newEntryLabels, paper: newPaper, font: newFont };
     if (editingId) setEntries(entries.map(e => e.id === editingId ? { ...e, ...entryData } : e));
     else setEntries([{ id: Date.now(), date: new Date().toISOString(), ...entryData }, ...entries]);
     resetForm(); setCurrentView('home');
-  }, [newTitle, newContent, newMood, newEntryLabels, editingId, entries]);
+  }, [newTitle, newContent, newMood, newEntryLabels, newPaper, newFont, editingId, entries]);
 
   const handleEditEntry = useCallback((entry) => {
-    setEditingId(entry.id); setNewTitle(entry.title); setNewContent(entry.content); setNewMood(entry.mood); setNewEntryLabels(entry.labels || []); setCurrentView('write');
+    setEditingId(entry.id); 
+    setNewTitle(entry.title); 
+    setNewContent(entry.content); 
+    setNewMood(entry.mood); 
+    setNewEntryLabels(entry.labels || []); 
+    setNewPaper(entry.paper || 'paper-polos');
+    setNewFont(entry.font || 'font-sans');
+    setCurrentView('write');
   }, []);
 
   useEffect(() => { if (currentView === 'write' && editorRef.current) { editorRef.current.innerHTML = newContent; } }, [currentView]);
 
   const handleDeleteEntry = useCallback((entry) => { setEntries(entries.filter(e => e.id !== entry.id)); setDeletedEntries([entry, ...deletedEntries]); }, [entries, deletedEntries]);
   const handleRestoreEntry = useCallback((entry) => { setDeletedEntries(deletedEntries.filter(e => e.id !== entry.id)); setEntries([...entries, entry].sort((a, b) => new Date(b.date) - new Date(a.date))); }, [entries, deletedEntries]);
-  const resetForm = useCallback(() => { setEditingId(null); setNewTitle(''); setNewContent(''); setNewMood('senang'); setNewEntryLabels([]); }, []);
+  
+  const resetForm = useCallback(() => { 
+    setEditingId(null); setNewTitle(''); setNewContent(''); setNewMood('senang'); setNewEntryLabels([]); 
+    setNewPaper('paper-polos'); setNewFont('font-sans');
+  }, []);
 
   const handleAddQuote = useCallback(() => {
     if (!newQuoteText.trim()) return;
@@ -164,6 +180,34 @@ const App = () => {
 
   return (
     <div className={`h-[100dvh] w-full ${mode.bgMain} font-sans ${mode.textMain} relative overflow-hidden transition-colors duration-500 selection:${theme.bgMedium} selection:${theme.text}`}>
+      
+      {/* SUNTIKAN CSS UNTUK FONT DAN KERTAS */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Dancing+Script:wght@400..700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+        
+        /* Font Styles */
+        .font-sans { font-family: ui-sans-serif, system-ui, sans-serif; }
+        .font-elegant { font-family: 'Lora', serif !important; }
+        .font-handwriting { font-family: 'Caveat', cursive !important; font-size: 1.25em; }
+        .font-script { font-family: 'Dancing Script', cursive !important; font-size: 1.25em; }
+        
+        /* Paper Styles */
+        .paper-polos { background-color: transparent; }
+        .paper-garis { 
+          background-image: repeating-linear-gradient(transparent, transparent calc(2em - 1px), rgba(150, 150, 150, 0.25) calc(2em - 1px), rgba(150, 150, 150, 0.25) 2em); 
+          line-height: 2em !important; 
+          background-attachment: local; 
+        }
+        .paper-titik { 
+          background-image: radial-gradient(rgba(150, 150, 150, 0.35) 1px, transparent 1px); 
+          background-size: 1.5em 1.5em; 
+        }
+        .paper-grid { 
+          background-image: linear-gradient(to right, rgba(150, 150, 150, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(150, 150, 150, 0.2) 1px, transparent 1px); 
+          background-size: 1.5em 1.5em; 
+        }
+      `}</style>
+
       <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] ${theme.blob1} rounded-full blur-[100px] pointer-events-none transition-all duration-700 ${isDarkMode ? 'opacity-10' : ''}`}></div>
       <div className={`absolute top-[20%] right-[-10%] w-[40%] h-[60%] ${theme.blob2} rounded-full blur-[120px] pointer-events-none transition-all duration-700 ${isDarkMode ? 'opacity-10' : ''}`}></div>
       <div className={`absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] ${theme.blob3} rounded-full blur-[100px] pointer-events-none transition-all duration-700 ${isDarkMode ? 'opacity-10' : ''}`}></div>
@@ -243,12 +287,13 @@ const App = () => {
                       <div key={entry.id} className={`w-full ${mode.bgCard} backdrop-blur-md rounded-2xl ${mode.shadow} border ${mode.border} hover:shadow-md transition-all group overflow-hidden flex flex-col`}>
                         <div className="p-5 cursor-pointer flex-1" onClick={() => { setActiveEntry(entry); setCurrentView('read'); }}>
                           <div className="flex justify-between items-start mb-2">
-                            <h3 className={`font-bold ${mode.textMain} group-hover:${theme.text} transition-colors`}>{entry.title}</h3>
+                            <h3 className={`font-bold ${mode.textMain} group-hover:${theme.text} transition-colors ${entry.font || 'font-sans'}`}>{entry.title}</h3>
                             <span className={`text-2xl ${mode.bgItem} w-8 h-8 flex items-center justify-center rounded-full shadow-inner shrink-0 ml-2`}>{moods.find(m => m.id === entry.mood)?.emoji}</span>
                           </div>
                           <div className={`flex items-center gap-1.5 text-xs ${theme.textLight} font-medium mb-1`}>{getTimeIcon(entry.date)}<span>{formatDateTime(entry.date)}</span></div>
                           {renderEntryLabels(entry.labels)}
-                          <p className={`text-sm ${mode.textCard} line-clamp-2 leading-relaxed mt-2`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
+                          {/* Cuplikan menggunakan font yang diset */}
+                          <p className={`text-sm ${mode.textCard} line-clamp-2 leading-relaxed mt-2 ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                         </div>
                         <div className={`px-5 py-2.5 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50/50'} flex justify-end gap-4 border-t ${mode.border}`}>
                           <button onClick={() => handleEditEntry(entry)} className="text-blue-400 flex items-center gap-1.5 text-xs font-bold hover:text-blue-500 transition-colors"><Edit3 size={14} /> Edit</button>
@@ -268,6 +313,8 @@ const App = () => {
                 <p className={`font-serif text-2xl ${theme.textLight} mb-1`}>بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم</p>
                 <p className={`text-xs ${mode.textMuted}`}>{editingId ? 'Memperbarui cerita...' : 'Awali dengan nama Allah'}</p>
               </div>
+
+              {/* Panel Mood & Label */}
               <div className={`${mode.bgCard} p-3 rounded-3xl shadow-sm border ${mode.border} shrink-0`}>
                 <div className={`flex justify-center gap-1 sm:gap-3 mb-3 pb-3 border-b ${mode.border}`}>
                   {moods.map(mood => (
@@ -293,9 +340,41 @@ const App = () => {
                   </div>
                 </div>
               </div>
-              <div className={`flex-1 flex flex-col ${mode.bgInput} p-4 rounded-3xl shadow-inner border ${mode.border} min-h-[300px]`}>
-                <input type="text" placeholder="Beri judul ceritamu..." value={newTitle} onChange={e => setNewTitle(e.target.value)} className={`w-full bg-transparent text-xl font-bold ${mode.textMain} placeholder-gray-400 border-b-2 ${mode.border} focus:border-transparent focus:ring-0 outline-none pb-3 mb-4 transition-colors shrink-0`} />
-                <div className={`flex flex-wrap items-center justify-between gap-2 mb-3 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} p-2 rounded-xl shrink-0 border ${mode.border}`}>
+
+              {/* Panel Template Kertas & Font */}
+              <div className="flex flex-wrap gap-4 px-1 shrink-0">
+                <div className="flex items-center gap-2">
+                  <FileText size={14} className={theme.textLight} />
+                  <span className={`text-[10px] font-bold ${mode.textMuted} uppercase tracking-widest`}>Kertas:</span>
+                  <select value={newPaper} onChange={e => setNewPaper(e.target.value)} className={`text-xs font-medium ${mode.bgItem} ${mode.textMain} border ${mode.border} rounded-lg py-1 px-2 outline-none focus:ring-2 ${theme.ring} cursor-pointer`}>
+                    <option value="paper-polos">Polos Putih</option>
+                    <option value="paper-garis">Garis-Garis</option>
+                    <option value="paper-titik">Titik-Titik</option>
+                    <option value="paper-grid">Kotak-Kotak</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Type size={14} className={theme.textLight} />
+                  <span className={`text-[10px] font-bold ${mode.textMuted} uppercase tracking-widest`}>Font:</span>
+                  <select value={newFont} onChange={e => setNewFont(e.target.value)} className={`text-xs font-medium ${mode.bgItem} ${mode.textMain} border ${mode.border} rounded-lg py-1 px-2 outline-none focus:ring-2 ${theme.ring} cursor-pointer`}>
+                    <option value="font-sans" className="font-sans">Modern</option>
+                    <option value="font-elegant" className="font-elegant">Elegan</option>
+                    <option value="font-handwriting" className="font-handwriting">Tulis Tangan</option>
+                    <option value="font-script" className="font-script">Latin Sambung</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Area Editor Text */}
+              <div className={`flex-1 flex flex-col ${mode.bgInput} rounded-3xl shadow-inner border ${mode.border} min-h-[300px] overflow-hidden`}>
+                
+                {/* Judul */}
+                <div className="p-4 pb-0">
+                  <input type="text" placeholder="Beri judul ceritamu..." value={newTitle} onChange={e => setNewTitle(e.target.value)} className={`w-full bg-transparent text-xl font-bold ${mode.textMain} ${newFont} placeholder-gray-400 border-b-2 ${mode.border} focus:border-transparent focus:ring-0 outline-none pb-3 mb-2 transition-colors shrink-0`} />
+                </div>
+                
+                {/* Toolbar Format */}
+                <div className={`flex flex-wrap items-center justify-between gap-2 mb-2 mx-4 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} p-2 rounded-xl shrink-0 border ${mode.border}`}>
                   <div className="flex gap-2">
                     <button onClick={() => applyFormat('bold')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`}><Bold size={16}/></button>
                     <button onClick={() => applyFormat('italic')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`}><Italic size={16}/></button>
@@ -310,7 +389,16 @@ const App = () => {
                     <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className={`px-3 py-1 ${mode.bgItem} rounded-lg shadow-sm ${theme.text} font-bold`}>A-</button>
                   </div>
                 </div>
-                <div ref={editorRef} contentEditable onInput={e => setNewContent(e.currentTarget.innerHTML)} style={{ fontSize: `${fontSize}px` }} className={`w-full flex-1 outline-none ${mode.textCard} leading-relaxed overflow-y-auto`} placeholder="Ceritakan apa yang kamu rasakan hari ini..."></div>
+
+                {/* Kanvas Kertas Tulis */}
+                <div 
+                  ref={editorRef} 
+                  contentEditable 
+                  onInput={e => setNewContent(e.currentTarget.innerHTML)} 
+                  style={{ fontSize: `${fontSize}px` }} 
+                  className={`w-full flex-1 outline-none ${mode.textCard} leading-relaxed overflow-y-auto p-4 transition-all ${newPaper} ${newFont}`} 
+                  placeholder="Ceritakan apa yang kamu rasakan hari ini..."
+                ></div>
               </div>
               <button onClick={handleSaveEntry} disabled={!newTitle.trim()} className={`w-full py-4 bg-gradient-to-r ${theme.gradient} text-white rounded-2xl font-bold shadow-lg ${isDarkMode ? 'shadow-black/50' : theme.shadow} transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98] shrink-0`}>
                 {editingId ? 'Simpan Perubahan' : 'Simpan Jurnal'}
@@ -319,23 +407,32 @@ const App = () => {
           )}
 
           {currentView === 'read' && activeEntry && (
-            <div className={`${mode.bgCard} backdrop-blur-md rounded-3xl p-6 shadow-sm border ${mode.border} animate-in zoom-in-95 duration-300`}>
-              <div className="flex justify-between items-center mb-4">
-                {renderEntryLabels(activeEntry.labels)}
-                <div className="flex gap-2">
-                  <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className={`px-3 py-1 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} rounded-lg ${theme.text} font-bold shadow-sm border ${mode.border}`}>A+</button>
-                  <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className={`px-3 py-1 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} rounded-lg ${theme.text} font-bold shadow-sm border ${mode.border}`}>A-</button>
+            <div className={`${mode.bgCard} backdrop-blur-md rounded-3xl shadow-sm border ${mode.border} animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col`}>
+              {/* Header Baca */}
+              <div className="p-6 pb-2">
+                <div className="flex justify-between items-center mb-4">
+                  {renderEntryLabels(activeEntry.labels)}
+                  <div className="flex gap-2">
+                    <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className={`px-3 py-1 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} rounded-lg ${theme.text} font-bold shadow-sm border ${mode.border}`}>A+</button>
+                    <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className={`px-3 py-1 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} rounded-lg ${theme.text} font-bold shadow-sm border ${mode.border}`}>A-</button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className={`text-2xl font-bold ${mode.textMain} mb-1`}>{activeEntry.title}</h2>
-                  <p className={`text-sm ${theme.textLight} font-medium flex items-center gap-2`}>{getTimeIcon(activeEntry.date)}<span>{formatDateTime(activeEntry.date)}</span></p>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className={`text-2xl font-bold ${mode.textMain} mb-1 ${activeEntry.font || 'font-sans'}`}>{activeEntry.title}</h2>
+                    <p className={`text-sm ${theme.textLight} font-medium flex items-center gap-2`}>{getTimeIcon(activeEntry.date)}<span>{formatDateTime(activeEntry.date)}</span></p>
+                  </div>
+                  <div className={`text-4xl ${mode.bgItem} p-2 rounded-2xl shadow-inner shrink-0 ml-2 border ${mode.border}`}>{moods.find(m => m.id === activeEntry.mood)?.emoji}</div>
                 </div>
-                <div className={`text-4xl ${mode.bgItem} p-2 rounded-2xl shadow-inner shrink-0 ml-2 border ${mode.border}`}>{moods.find(m => m.id === activeEntry.mood)?.emoji}</div>
+                <div className={`w-12 h-1 bg-gradient-to-r ${theme.gradientLight} mb-2 rounded-full`}></div>
               </div>
-              <div className={`w-12 h-1 bg-gradient-to-r ${theme.gradientLight} mb-6 rounded-full`}></div>
-              <div className={`${mode.textCard} leading-loose whitespace-pre-wrap break-words pb-8`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: activeEntry.content }} />
+
+              {/* Area Kertas Baca */}
+              <div 
+                className={`${mode.textCard} p-6 pt-4 pb-12 transition-all ${activeEntry.paper || 'paper-polos'} ${activeEntry.font || 'font-sans'}`} 
+                style={{ fontSize: `${fontSize}px` }} 
+                dangerouslySetInnerHTML={{ __html: activeEntry.content }} 
+              />
             </div>
           )}
 
@@ -414,9 +511,9 @@ const App = () => {
                   {deletedEntries.map(entry => (
                     <div key={entry.id} className={`w-full ${mode.bgInput} backdrop-blur-md rounded-2xl shadow-sm border ${mode.border} overflow-hidden opacity-80 hover:opacity-100 transition-opacity`}>
                       <div className="p-5 opacity-70">
-                        <h3 className={`font-bold ${mode.textMuted} line-through decoration-gray-400 mb-1`}>{entry.title}</h3>
+                        <h3 className={`font-bold ${mode.textMuted} line-through decoration-gray-400 mb-1 ${entry.font || 'font-sans'}`}>{entry.title}</h3>
                         <div className={`flex items-center gap-1.5 text-xs ${mode.textMuted} mb-2`}>{getTimeIcon(entry.date)}<span>{formatDateTime(entry.date)}</span></div>
-                        <p className={`text-sm ${mode.textMuted} line-clamp-1 italic`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
+                        <p className={`text-sm ${mode.textMuted} line-clamp-1 italic ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                       </div>
                       <div className={`px-5 py-2.5 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} flex justify-end gap-4 border-t ${mode.border}`}>
                         <button onClick={() => handleRestoreEntry(entry)} className="text-emerald-500 flex items-center gap-1.5 text-xs font-bold hover:text-emerald-600 transition-colors"><RotateCcw size={14} /> Kembalikan</button>
