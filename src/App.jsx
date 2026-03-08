@@ -549,13 +549,13 @@ const App = () => {
         </main>
 
         {currentView === 'home' && (
-          <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+          <div className="absolute bottom-8 right-6 z-20">
             <button
               onClick={() => { resetForm(); setCurrentView('write'); }}
-              className="group flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-400 text-white px-6 py-4 rounded-full shadow-xl shadow-pink-200 hover:shadow-pink-300 hover:-translate-y-1 transition-all"
+              className="group flex items-center justify-center w-14 h-14 bg-gradient-to-br from-pink-500 to-purple-400 text-white rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-pink-400/60 hover:-translate-y-1 transition-all duration-300"
+              title="Tulis Hari Ini"
             >
-              <PenLine size={20} className="group-hover:rotate-12 transition-transform" />
-              <span className="font-bold tracking-wide">Tulis Hari Ini</span>
+              <Plus size={28} className="group-hover:rotate-90 transition-transform duration-300" />
             </button>
           </div>
         )}
