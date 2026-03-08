@@ -190,19 +190,13 @@ const App = () => {
   const handleDragEnd = (e) => {
     e.currentTarget.style.opacity = '1';
     
-    // Pastikan ref ada isinya sebelum diurutkan
     if (dragItem.current !== null && dragOverItem.current !== null) {
       const copyQuotes = [...userQuotes];
-      // Simpan item yang ditarik
       const dragItemContent = copyQuotes[dragItem.current];
-      // Hapus dari posisi lama
       copyQuotes.splice(dragItem.current, 1);
-      // Sisipkan di posisi baru
       copyQuotes.splice(dragOverItem.current, 0, dragItemContent);
-      
       setUserQuotes(copyQuotes);
     }
-    // Reset referensi
     dragItem.current = null;
     dragOverItem.current = null;
   };
@@ -213,12 +207,13 @@ const App = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] font-sans text-gray-800 relative overflow-x-hidden selection:bg-pink-200 selection:text-pink-900">
+    /* PERUBAHAN UTAMA: h-[100dvh] dan overflow-hidden agar layar terkunci */
+    <div className="h-[100dvh] w-full bg-[#FAF7F2] font-sans text-gray-800 relative overflow-hidden selection:bg-pink-200 selection:text-pink-900">
       
-      {/* Efek Latar Belakang Cat Air */}
-      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="fixed top-[20%] right-[-10%] w-[40%] h-[60%] bg-purple-200/30 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="fixed bottom-[-10%] left-[20%] w-[60%] h-[40%] bg-teal-100/40 rounded-full blur-[100px] pointer-events-none"></div>
+      {/* Efek Latar Belakang Cat Air (diubah menjadi absolute) */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-[20%] right-[-10%] w-[40%] h-[60%] bg-purple-200/30 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] bg-teal-100/40 rounded-full blur-[100px] pointer-events-none"></div>
 
       {/* MENU SLIDE (SIDEBAR) */}
       {isSidebarOpen && (
@@ -245,10 +240,11 @@ const App = () => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto min-h-screen bg-white/40 backdrop-blur-sm shadow-xl shadow-pink-100/50 relative z-10 flex flex-col">
+      {/* WADAH UTAMA: h-full akan membuatnya pas dengan layar */}
+      <div className="max-w-md mx-auto h-full bg-white/40 backdrop-blur-sm shadow-xl shadow-pink-100/50 relative z-10 flex flex-col">
         
         {/* HEADER */}
-        <header className="pt-10 pb-6 px-6 text-center relative flex justify-center items-center">
+        <header className="pt-10 pb-6 px-6 text-center relative flex justify-center items-center shrink-0">
           {currentView === 'home' ? (
             <button onClick={() => setIsSidebarOpen(true)} className="absolute left-6 p-2 bg-white/60 rounded-full hover:bg-white text-pink-500 transition-colors shadow-sm"><Menu size={20} /></button>
           ) : (
@@ -264,11 +260,12 @@ const App = () => {
           </div>
         </header>
 
+        {/* AREA KONTEN (SCROLL HANYA TERJADI DI DALAM SINI) */}
         <main className="flex-1 px-6 pb-24 overflow-y-auto">
           
           {/* 1. TAMPILAN BERANDA */}
           {currentView === 'home' && (
-            <div className="space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-6 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
               
               <div className="bg-gradient-to-br from-pink-100/80 to-purple-100/80 rounded-3xl p-6 shadow-sm border border-white/50 relative overflow-hidden">
                 <Sparkles className="absolute top-4 right-4 text-pink-300 opacity-50" size={40} />
@@ -288,7 +285,7 @@ const App = () => {
                 />
               </div>
 
-              <div className="flex-1">
+              <div className="flex-1 pb-10">
                 <div className="flex items-center justify-between mb-4 mt-2">
                   <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">
                     <CalendarHeart size={18} className="text-pink-400" />
@@ -315,7 +312,6 @@ const App = () => {
                             <span className="text-2xl bg-pink-50 w-8 h-8 flex items-center justify-center rounded-full shadow-inner">{moods.find(m => m.id === entry.mood)?.emoji}</span>
                           </div>
                           <p className="text-xs text-pink-400 font-medium mb-2">{formatDate(entry.date)}</p>
-                          {/* Render cuplikan teks tanpa memunculkan kode HTML */}
                           <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: entry.content }}></p>
                         </div>
                         <div className="px-5 py-2.5 bg-gradient-to-r from-pink-50/50 to-purple-50/50 flex justify-end gap-4 border-t border-pink-100/50">
@@ -338,8 +334,7 @@ const App = () => {
                 <p className="text-xs text-gray-400">{editingId ? 'Memperbarui cerita...' : 'Awali dengan nama Allah'}</p>
               </div>
 
-              {/* Mood Selector */}
-              <div className="bg-white/60 p-3 rounded-2xl shadow-sm border border-white">
+              <div className="bg-white/60 p-3 rounded-2xl shadow-sm border border-white shrink-0">
                 <div className="flex justify-center gap-2 sm:gap-4">
                   {moods.map((mood) => (
                     <button key={mood.id} onClick={() => setNewMood(mood.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${newMood === mood.id ? 'bg-pink-100 scale-110 shadow-sm ring-2 ring-pink-200' : 'hover:bg-pink-50 opacity-70 hover:opacity-100'}`}>
@@ -350,23 +345,21 @@ const App = () => {
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col bg-white/60 p-4 rounded-3xl shadow-inner border border-white/50">
+              <div className="flex-1 flex flex-col bg-white/60 p-4 rounded-3xl shadow-inner border border-white/50 min-h-[300px]">
                 <input
                   type="text"
                   placeholder="Beri judul ceritamu..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400 border-b-2 border-pink-100 focus:border-pink-300 outline-none pb-3 mb-4 transition-colors"
+                  className="w-full bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400 border-b-2 border-pink-100 focus:border-pink-300 outline-none pb-3 mb-4 transition-colors shrink-0"
                 />
                 
-                {/* TOOLBAR FORMATTING & ZOOM */}
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-pink-50/50 p-2 rounded-xl">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-pink-50/50 p-2 rounded-xl shrink-0">
                   <div className="flex gap-2">
                     <button onClick={() => applyFormat('bold')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Tebal"><Bold size={16}/></button>
                     <button onClick={() => applyFormat('italic')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Miring"><Italic size={16}/></button>
                     <button onClick={() => applyFormat('underline')} className="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50" title="Garis Bawah"><Underline size={16}/></button>
                     
-                    {/* Warna Teks Krayon */}
                     <div className="relative inline-block overflow-hidden rounded-lg shadow-sm bg-white p-1 hover:bg-pink-50" title="Warna Teks">
                       <Palette size={20} className="text-gray-600 pointer-events-none mx-1" />
                       <input 
@@ -377,20 +370,18 @@ const App = () => {
                     </div>
                   </div>
                   
-                  {/* Zoom Kontrol (A+ / A-) */}
                   <div className="flex gap-1 border-l-2 border-pink-100 pl-2">
                     <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className="px-3 py-1 bg-white rounded-lg shadow-sm text-pink-600 font-bold hover:bg-pink-100" title="Perbesar">A+</button>
                     <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className="px-3 py-1 bg-white rounded-lg shadow-sm text-pink-600 font-bold hover:bg-pink-100" title="Perkecil">A-</button>
                   </div>
                 </div>
 
-                {/* AREA TEKS RICH EDITOR (Bisa diformat) */}
                 <div
                   ref={editorRef}
                   contentEditable
                   onInput={(e) => setNewContent(e.currentTarget.innerHTML)}
                   style={{ fontSize: `${fontSize}px` }}
-                  className="w-full flex-1 min-h-[200px] outline-none text-gray-700 leading-relaxed overflow-y-auto"
+                  className="w-full flex-1 outline-none text-gray-700 leading-relaxed overflow-y-auto"
                   placeholder="Ceritakan apa yang kamu alami atau syukuri hari ini..."
                 ></div>
               </div>
@@ -398,7 +389,7 @@ const App = () => {
               <button
                 onClick={handleSaveEntry}
                 disabled={!newTitle.trim()}
-                className="w-full py-4 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
+                className="w-full py-4 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98] shrink-0"
               >
                 {editingId ? 'Simpan Perubahan' : 'Simpan Jurnal'}
               </button>
@@ -408,7 +399,6 @@ const App = () => {
           {/* 3. TAMPILAN BACA JURNAL */}
           {currentView === 'read' && activeEntry && (
             <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-pink-50 animate-in zoom-in-95 duration-300">
-              {/* Toolbar Zoom Saat Membaca */}
               <div className="flex justify-end gap-2 mb-4">
                 <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className="px-3 py-1 bg-pink-100 rounded-lg text-pink-700 font-bold hover:bg-pink-200 shadow-sm transition-colors">A+</button>
                 <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className="px-3 py-1 bg-pink-100 rounded-lg text-pink-700 font-bold hover:bg-pink-200 shadow-sm transition-colors">A-</button>
@@ -424,20 +414,18 @@ const App = () => {
               
               <div className="w-12 h-1 bg-gradient-to-r from-pink-300 to-transparent mb-6 rounded-full"></div>
               
-              {/* Render Teks Berformat HTML */}
               <div 
-                className="text-gray-700 leading-loose whitespace-pre-wrap break-words" 
+                className="text-gray-700 leading-loose whitespace-pre-wrap break-words pb-8" 
                 style={{ fontSize: `${fontSize}px` }}
                 dangerouslySetInnerHTML={{ __html: activeEntry.content }}
               />
             </div>
           )}
 
-          {/* 4. TAMPILAN MANAJEMEN QUOTE (DENGAN DRAG & DROP) */}
+          {/* 4. TAMPILAN MANAJEMEN QUOTE */}
           {currentView === 'quotes' && (
-            <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-6 animate-in fade-in duration-300 pb-10">
               
-              {/* Form Tambah Quote */}
               <div className="bg-white/60 p-5 rounded-3xl shadow-sm border border-white">
                 <h3 className="font-bold text-pink-600 flex items-center gap-2 mb-4">
                   <Plus size={18} /> Tambah Kutipan Favoritmu
@@ -466,7 +454,6 @@ const App = () => {
                 </div>
               </div>
 
-              {/* Daftar Quote Saat Ini */}
               <div>
                 <div className="flex justify-between items-center mb-3 px-1">
                   <h3 className="font-bold text-gray-700">Daftar Kutipan Aktif ({userQuotes.length})</h3>
@@ -485,7 +472,6 @@ const App = () => {
                     {userQuotes.map((quote, index) => (
                       <div 
                         key={quote.id || index} 
-                        // Atribut untuk mengaktifkan Drag and Drop
                         draggable 
                         onDragStart={(e) => handleDragStart(e, index)}
                         onDragEnter={(e) => handleDragEnter(e, index)}
@@ -493,7 +479,6 @@ const App = () => {
                         onDragOver={(e) => e.preventDefault()}
                         className="bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-pink-50 flex justify-between items-start gap-3 group cursor-move hover:shadow-md hover:border-pink-200 transition-all"
                       >
-                        {/* Ikon Pegangan (Grip) untuk ditarik */}
                         <div className="pt-1 text-gray-300 group-hover:text-pink-300 transition-colors">
                           <GripVertical size={18} />
                         </div>
@@ -520,7 +505,7 @@ const App = () => {
 
           {/* 5. TAMPILAN TEMPAT SAMPAH (TRASH) */}
           {currentView === 'trash' && (
-            <div className="space-y-4 animate-in fade-in duration-300">
+            <div className="space-y-4 animate-in fade-in duration-300 pb-10">
               {deletedEntries.length === 0 ? (
                 <div className="text-center py-20 text-gray-400 flex flex-col items-center">
                   <ArchiveX size={40} className="mb-3 text-pink-200" /><p>Tempat sampah kosong.</p>
@@ -548,8 +533,10 @@ const App = () => {
 
         </main>
 
+        {/* TOMBOL FAB (FLOATING ACTION BUTTON) */}
+        {/* Tombol ini sekarang benar-benar mengambang di pojok kanan bawah container utama */}
         {currentView === 'home' && (
-          <div className="absolute bottom-8 right-6 z-20">
+          <div className="absolute bottom-8 right-6 z-50">
             <button
               onClick={() => { resetForm(); setCurrentView('write'); }}
               className="group flex items-center justify-center w-14 h-14 bg-gradient-to-br from-pink-500 to-purple-400 text-white rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-pink-400/60 hover:-translate-y-1 transition-all duration-300"
