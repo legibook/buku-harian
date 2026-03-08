@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { BookHeart, PenLine, CalendarHeart, ChevronLeft, Sparkles, Moon, Sun, Sunset, Menu, Trash2, Edit3, X, RotateCcw, ArchiveX, Bold, Italic, Underline, Palette, Search, Quote, Plus, GripVertical, Tag, Settings, Check, FileText, Type } from 'lucide-react';
+import { BookHeart, PenLine, CalendarHeart, ChevronLeft, Sparkles, Moon, Sun, Sunset, Menu, Trash2, Edit3, X, RotateCcw, ArchiveX, Bold, Italic, Underline, Palette, Search, Quote, Plus, GripVertical, Tag, Settings, Check, FileText, Type, ImagePlus } from 'lucide-react';
 
 const defaultQuotes = [
   { text: "Maka sesungguhnya bersama kesulitan ada kemudahan. Sesungguhnya bersama kesulitan ada kemudahan.", source: "QS. Al-Insyirah: 5-6" },
@@ -64,6 +64,7 @@ const App = () => {
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
   const editorRef = useRef(null); 
+  const fileInputRef = useRef(null); // Ref untuk input gambar
 
   const theme = useMemo(() => themeColors[currentTheme] || themeColors.pink, [currentTheme]);
   const mode = useMemo(() => ({
@@ -107,6 +108,32 @@ const App = () => {
   const applyFormat = useCallback((command, value = null) => {
     document.execCommand(command, false, value);
     if (editorRef.current) { setNewContent(editorRef.current.innerHTML); editorRef.current.focus(); }
+  }, []);
+
+  // --- FUNGSI INSERT GAMBAR (SAT-SET) ---
+  const handleImageUpload = useCallback((e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Image = event.target.result;
+        // Membungkus gambar dengan Div yang bisa di-resize
+        const imageHtml = `
+          <div class="diary-img-wrapper" contenteditable="false">
+            <img src="${base64Image}" alt="Sisipan Jurnal" />
+          </div>
+          &nbsp;
+        `;
+        document.execCommand('insertHTML', false, imageHtml);
+        if (editorRef.current) {
+          setNewContent(editorRef.current.innerHTML);
+          editorRef.current.focus();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input agar bisa upload gambar yang sama berturut-turut
+    e.target.value = null;
   }, []);
 
   const handleSaveEntry = useCallback(() => {
@@ -180,7 +207,7 @@ const App = () => {
   return (
     <div className={`h-[100dvh] w-full ${mode.bgMain} font-sans ${mode.textMain} relative overflow-hidden transition-colors duration-500 selection:${theme.bgMedium} selection:${theme.text}`}>
       
-      {/* SUNTIKAN CSS UNTUK FONT DAN KERTAS PRESISI TINGGI */}
+      {/* SUNTIKAN CSS UNTUK FONT, KERTAS PRESISI, DAN RESIZE GAMBAR */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Dancing+Script:wght@400..700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
         
@@ -190,34 +217,44 @@ const App = () => {
         .font-handwriting { font-family: 'Caveat', cursive !important; font-size: 1.3em; }
         .font-script { font-family: 'Dancing Script', cursive !important; font-size: 1.3em; }
         
-        /* Paper Styles (Presisi Tinggi Menyesuaikan Baseline) */
+        /* Paper Styles */
         .paper-polos { background-color: transparent; }
-        
         .paper-garis { 
-          /* Kalkulasi 1.6em adalah estimasi titik baseline paling pas untuk line-height 2em */
           background-image: linear-gradient(transparent calc(1.6em - 1px), rgba(220, 150, 180, 0.4) calc(1.6em - 1px), rgba(220, 150, 180, 0.4) 1.6em, transparent 1.6em);
-          background-size: 100% 2em;
-          /* 1rem adalah penyesuaian padding atas container (p-4 / pt-4) */
-          background-position: 0 1rem;
-          line-height: 2em !important; 
-          background-attachment: local; 
+          background-size: 100% 2em; background-position: 0 1rem; line-height: 2em !important; background-attachment: local; 
         }
-        
         .paper-titik { 
           background-image: radial-gradient(rgba(220, 150, 180, 0.6) 1.5px, transparent 1.5px); 
-          background-size: 2em 2em; 
-          background-position: 1rem calc(1rem + 0.6em);
-          line-height: 2em !important; 
-          background-attachment: local; 
+          background-size: 2em 2em; background-position: 1rem calc(1rem + 0.6em); line-height: 2em !important; background-attachment: local; 
         }
-        
         .paper-grid { 
           background-image: linear-gradient(to right, rgba(220, 150, 180, 0.3) 1px, transparent 1px), 
                             linear-gradient(to bottom, transparent calc(1.6em - 1px), rgba(220, 150, 180, 0.3) calc(1.6em - 1px), rgba(220, 150, 180, 0.3) 1.6em, transparent 1.6em); 
-          background-size: 2em 2em; 
-          background-position: 1rem 1rem; 
-          line-height: 2em !important; 
-          background-attachment: local; 
+          background-size: 2em 2em; background-position: 1rem 1rem; line-height: 2em !important; background-attachment: local; 
+        }
+
+        /* Image Resizer Wrapper */
+        .diary-img-wrapper {
+          display: inline-block;
+          width: 60%;
+          min-width: 100px;
+          max-width: 100%;
+          resize: both;
+          overflow: hidden;
+          border: 2px dashed rgba(244, 114, 182, 0.6);
+          padding: 4px;
+          border-radius: 12px;
+          margin: 12px;
+          background-color: rgba(255, 255, 255, 0.5);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          vertical-align: middle;
+        }
+        .diary-img-wrapper img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 8px;
+          pointer-events: none; /* Mencegah drag native gambar agar fokus ke pojok resize */
         }
       `}</style>
 
@@ -306,7 +343,7 @@ const App = () => {
                           <div className={`flex items-center gap-1.5 text-xs ${theme.textLight} font-medium mb-1`}>{getTimeIcon(entry.date)}<span>{formatDateTime(entry.date)}</span></div>
                           {renderEntryLabels(entry.labels)}
                           {/* Cuplikan menggunakan font yang diset */}
-                          <p className={`text-sm ${mode.textCard} line-clamp-2 leading-relaxed mt-2 ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
+                          <div className={`text-sm ${mode.textCard} line-clamp-2 leading-relaxed mt-2 ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></div>
                         </div>
                         <div className={`px-5 py-2.5 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50/50'} flex justify-end gap-4 border-t ${mode.border}`}>
                           <button onClick={() => handleEditEntry(entry)} className="text-blue-400 flex items-center gap-1.5 text-xs font-bold hover:text-blue-500 transition-colors"><Edit3 size={14} /> Edit</button>
@@ -386,17 +423,28 @@ const App = () => {
                   <input type="text" placeholder="Beri judul ceritamu..." value={newTitle} onChange={e => setNewTitle(e.target.value)} className={`w-full bg-transparent text-xl font-bold ${mode.textMain} ${newFont} placeholder-gray-400 border-b-2 ${mode.border} focus:border-transparent focus:ring-0 outline-none pb-3 mb-2 transition-colors shrink-0`} />
                 </div>
                 
-                {/* Toolbar Format */}
+                {/* Toolbar Format & Gambar */}
                 <div className={`flex flex-wrap items-center justify-between gap-2 mb-2 mx-4 ${isDarkMode ? 'bg-gray-800' : theme.bgLight} p-2 rounded-xl shrink-0 border ${mode.border}`}>
-                  <div className="flex gap-2">
-                    <button onClick={() => applyFormat('bold')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`}><Bold size={16}/></button>
-                    <button onClick={() => applyFormat('italic')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`}><Italic size={16}/></button>
-                    <button onClick={() => applyFormat('underline')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`}><Underline size={16}/></button>
-                    <div className={`relative inline-block overflow-hidden rounded-lg shadow-sm ${mode.bgItem} p-1`}>
+                  <div className="flex gap-2 items-center">
+                    <button onClick={() => applyFormat('bold')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`} title="Tebal"><Bold size={16}/></button>
+                    <button onClick={() => applyFormat('italic')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`} title="Miring"><Italic size={16}/></button>
+                    <button onClick={() => applyFormat('underline')} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm ${mode.textMuted} hover:${theme.text}`} title="Garis Bawah"><Underline size={16}/></button>
+                    <div className={`relative inline-block overflow-hidden rounded-lg shadow-sm ${mode.bgItem} p-1`} title="Warna Teks">
                       <Palette size={20} className={`${mode.textMuted} pointer-events-none mx-1`} />
                       <input type="color" onChange={e => applyFormat('foreColor', e.target.value)} className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" />
                     </div>
+                    
+                    {/* Pembatas vertikal */}
+                    <div className={`w-px h-5 bg-gray-300 mx-1`}></div>
+                    
+                    {/* Tombol Sisip Gambar */}
+                    <button onClick={() => fileInputRef.current.click()} className={`p-2 ${mode.bgItem} rounded-lg shadow-sm text-pink-500 hover:bg-pink-100 transition-colors`} title="Sisipkan Gambar">
+                      <ImagePlus size={16}/>
+                    </button>
+                    {/* Input file tersembunyi */}
+                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                   </div>
+
                   <div className={`flex gap-1 border-l-2 ${mode.border} pl-2`}>
                     <button onClick={() => setFontSize(f => Math.min(f + 2, 28))} className={`px-3 py-1 ${mode.bgItem} rounded-lg shadow-sm ${theme.text} font-bold`}>A+</button>
                     <button onClick={() => setFontSize(f => Math.max(f - 2, 12))} className={`px-3 py-1 ${mode.bgItem} rounded-lg shadow-sm ${theme.text} font-bold`}>A-</button>
@@ -410,7 +458,7 @@ const App = () => {
                   onInput={e => setNewContent(e.currentTarget.innerHTML)} 
                   style={{ fontSize: `${fontSize}px` }} 
                   className={`w-full flex-1 outline-none ${mode.textCard} leading-relaxed overflow-y-auto p-4 transition-all ${newPaper} ${newFont}`} 
-                  placeholder="Ceritakan apa yang kamu rasakan hari ini..."
+                  placeholder="Ceritakan apa yang kamu rasakan hari ini, atau sisipkan gambar kesukaanmu..."
                 ></div>
               </div>
               <button onClick={handleSaveEntry} disabled={!newTitle.trim()} className={`w-full py-4 bg-gradient-to-r ${theme.gradient} text-white rounded-2xl font-bold shadow-lg ${isDarkMode ? 'shadow-black/50' : theme.shadow} transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98] shrink-0`}>
@@ -526,7 +574,7 @@ const App = () => {
                       <div className="p-5 opacity-70">
                         <h3 className={`font-bold ${mode.textMuted} line-through decoration-gray-400 mb-1 ${entry.font || 'font-sans'}`}>{entry.title}</h3>
                         <div className={`flex items-center gap-1.5 text-xs ${mode.textMuted} mb-2`}>{getTimeIcon(entry.date)}<span>{formatDateTime(entry.date)}</span></div>
-                        <p className={`text-sm ${mode.textMuted} line-clamp-1 italic ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></p>
+                        <div className={`text-sm ${mode.textMuted} line-clamp-1 italic ${entry.font || 'font-sans'}`} dangerouslySetInnerHTML={{ __html: entry.content }}></div>
                       </div>
                       <div className={`px-5 py-2.5 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} flex justify-end gap-4 border-t ${mode.border}`}>
                         <button onClick={() => handleRestoreEntry(entry)} className="text-emerald-500 flex items-center gap-1.5 text-xs font-bold hover:text-emerald-600 transition-colors"><RotateCcw size={14} /> Kembalikan</button>
